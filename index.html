@@ -1489,10 +1489,12 @@ vec3 bendDir(vec3 n, float d) {
   }
   function removeEntity(e) { e.alive = false; scene.remove(e.mesh); }
 
+  const sparkMats = {};
+  const sparkMat = color => sparkMats[color] || (sparkMats[color] = new THREE.MeshBasicMaterial({ color }));
   function burst(pos, color, n = 14, spread = 6) {
+    while (sparks.length + n > 150) { const old = sparks.shift(); scene.remove(old.m); }
     for (let i = 0; i < n; i++) {
-      const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
-      const m = new THREE.Mesh(GEO.spark, mat);
+      const m = new THREE.Mesh(GEO.spark, sparkMat(color));
       m.position.copy(pos);
       scene.add(m);
       sparks.push({ m, v: new THREE.Vector3((Math.random() - 0.5) * spread, Math.random() * 5 + 1, (Math.random() - 0.5) * spread), life: 0.6 + Math.random() * 0.3, max: 0.9 });
@@ -1932,8 +1934,18 @@ vec3 bendDir(vec3 n, float d) {
     else if (!p && state === 'paused') { state = 'play'; ui.pauseMenu.hidden = true; }
   }
 
+  function showOverMenu() {
+    if (state !== 'over') return;
+    ui.overMenu.hidden = false;
+    try { ui.restartBtn.focus(); } catch {}
+  }
   function gameOver(cause) {
+    if (state === 'over' || state === 'won') return;
     state = 'over';
+    setTimeout(showOverMenu, 650);                    // scheduled first, so a failure below cannot hide it
+    try { gameOverBody(cause); } catch (e) { reportError(e, 'gameOver'); }
+  }
+  function gameOverBody(cause) {
     if (cause === 'gap') sfx.fall();
     else if (cause === 'time' || cause === 'zen') sfx.win();
     else { sfx.crash(); shake = 0.6; burst(ball.position.clone(), ballLight.color.getHex(), 30); }
@@ -1978,7 +1990,6 @@ vec3 bendDir(vec3 n, float d) {
     }
     ui.restartBtn.textContent = raceMode ? 'Yarış odasına dön' : story ? 'Tekrar dene' : 'Tekrar koş';
     ui.levelsBtn.hidden = !story;
-    setTimeout(() => { if (state === 'over') { ui.overMenu.hidden = false; ui.restartBtn.focus(); } }, 650);
   }
 
   function showBanner(level, name, color) {
@@ -3270,8 +3281,8 @@ vec3 bendDir(vec3 n, float d) {
       s.m.position.addScaledVector(s.v, dt);
       s.m.position.z += dz;
       s.m.rotation.x += dt * 8;
-      s.m.material.opacity = Math.max(0, s.life / s.max);
-      if (s.life <= 0) { scene.remove(s.m); s.m.material.dispose(); }
+      s.m.scale.setScalar(Math.max(0, s.life / s.max));
+      if (s.life <= 0) scene.remove(s.m);
     }
     sparks = sparks.filter(s => s.life > 0);
 
@@ -3295,7 +3306,7 @@ vec3 bendDir(vec3 n, float d) {
     updateSpeedLines(dt, dz);
     updateOpponents(dt);
 
-    if (playing) {
+    if (playing && state === 'play') {
       run.dist = dist; run.crystals = crystals; run.zone = zoneLevel + 1;
       updateGhost(dt);
       checkProgress();
@@ -3353,15 +3364,38 @@ vec3 bendDir(vec3 n, float d) {
   initRoom();
 
   let last = performance.now();
+  let errCount = 0, errBurst = 0, errWindow = 0, faultN = 0;
+  function reportError(e, where) {
+    try {
+      console.error(where, e);
+      errCount++;
+      const now = performance.now();
+      if (now - errWindow > 2000) { errWindow = now; errBurst = 0; }
+      errBurst++;
+      if (errCount <= 3) toast(`Hata (${where})`, String((e && e.message) || e).slice(0, 110), 'var(--coral)');
+      if (errBurst > 40) {                             // the same fault every frame: reset to the menu instead of freezing
+        errBurst = 0; errWindow = now;
+        if (state !== 'menu') toMenu();
+      }
+    } catch {}
+  }
+  window.addEventListener('error', ev => reportError(ev.error || ev.message, 'betik'));
+  window.addEventListener('unhandledrejection', ev => reportError(ev.reason, 'söz'));
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    update(dt);
-    patchScene();
-    if (bloomOn()) composer.render(); else renderer.render(scene, camera);
+    try { if (faultN > 0) { faultN--; throw new Error('test hatası'); } update(dt); } catch (e) { reportError(e, 'oyun'); }
+    try {
+      patchScene();
+      if (bloomOn()) composer.render(); else renderer.render(scene, camera);
+    } catch (e) { reportError(e, 'çizim'); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+
+  // Phones can drop the graphics context under memory pressure: say so instead of freezing silently
+  canvas.addEventListener('webglcontextlost', () => toast('Grafik', 'Ekran kartı bağlantısı koptu, yeniden bağlanılıyor', 'var(--coral)'));
+  canvas.addEventListener('webglcontextrestored', () => { try { resize(); } catch {} toast('Grafik', 'Yeniden bağlandı', 'var(--shield)'); });
 
   // Test hook
   window.__kehribar = {
@@ -3380,6 +3414,7 @@ vec3 bendDir(vec3 n, float d) {
     get won() { return state === 'won'; },
     setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
     get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
+    fault(n) { faultN = n; }, get errors() { return errCount; },
     get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();
