@@ -22,6 +22,10 @@
   --slow: #9b8cff;
   --shield: #9dffb0;
   --slider: #ff3da8;
+  --c-block: var(--coral);
+  --c-bar: #ff8a3d;
+  --c-wall: #8a4dff;
+  --c-slider: var(--slider);
   --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -174,7 +178,7 @@ kbd {
   border: 0; padding: 14px 18px; cursor: pointer;
 }
 .btn:hover { background: #ffc46e; }
-.btn.alt { background: transparent; color: var(--double); border: 1px solid var(--double); display: grid; gap: 2px; padding: 10px 14px; }
+.btn.alt { background: transparent; color: var(--alt, var(--double)); border: 1px solid var(--alt, var(--double)); display: grid; gap: 2px; padding: 10px 14px; }
 .btn.alt small { font: 400 11px var(--font-mono); letter-spacing: .06em; text-transform: none; color: var(--mist-dim); }
 .btn.alt:hover { background: rgba(255, 210, 61, .08); }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -282,6 +286,53 @@ kbd {
   .ability { max-width: none; }
   .ability small { display: none; }
 }
+body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: #f0e442; }
+.head-right { display: grid; justify-items: end; gap: 2px; text-align: right; }
+.cloud { font-size: 11px; color: var(--mist-dim); }
+.cloud.ok { color: var(--shield); }
+.levels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.level {
+  display: grid; gap: 3px; text-align: left; cursor: pointer;
+  padding: 10px 11px; background: rgba(7, 26, 38, .45); color: var(--mist);
+  border: 1px solid rgba(127, 158, 170, .35); border-left: 3px solid var(--zc, var(--amber));
+  font: 400 12px var(--font-mono); min-width: 0;
+}
+.level b { font-family: var(--font-display); font-size: 15px; color: var(--mist); }
+.level .meta { color: var(--mist-dim); font-size: 11px; }
+.level:hover:not(:disabled) { border-color: var(--zc, var(--amber)); }
+.level:disabled { opacity: .45; cursor: default; }
+.stars { color: var(--double); letter-spacing: .12em; font-size: 14px; }
+.stars.big { font-size: 40px; line-height: 1; text-align: center; }
+.setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; flex-wrap: wrap; }
+.setting > span { display: grid; gap: 2px; }
+.setting small { font-size: 11px; color: var(--mist-dim); }
+.setting input[type="range"] { width: min(180px, 100%); accent-color: var(--amber); }
+.setting input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--amber); }
+.seg { display: flex; border: 1px solid rgba(127, 158, 170, .45); }
+.seg button { background: none; border: 0; color: var(--mist-dim); font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; padding: 7px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--amber); color: var(--night); }
+.input {
+  font: 400 14px var(--font-mono); color: var(--mist); background: rgba(7, 26, 38, .6);
+  border: 1px solid rgba(127, 158, 170, .45); padding: 10px 12px; min-width: 0;
+}
+.input:focus-visible { outline: 2px solid var(--crystal); outline-offset: 2px; }
+.player { display: flex; justify-content: space-between; gap: 10px; padding: 8px 11px; background: rgba(7, 26, 38, .45); font-size: 13px; }
+.player .tag { color: var(--mist-dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.player.me { border-left: 3px solid var(--amber); }
+.room-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 11px; background: rgba(7, 26, 38, .45); font-size: 13px; }
+.winner { color: var(--double); font-family: var(--font-display); font-size: 18px; }
+.countdown {
+  position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-family: var(--font-display); font-size: clamp(90px, 22vw, 180px); color: var(--amber);
+  text-shadow: 0 0 30px rgba(0, 0, 0, .6);
+}
+.race-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; font-size: 11px; color: var(--mist); text-align: right; }
+.race-list li.me { color: var(--amber); }
+.race-list li.out { color: var(--mist-dim); text-decoration: line-through; }
+.storybar { display: grid; justify-items: center; gap: 4px; }
+.storybar span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--mist-dim); }
+.storybar .bar { width: min(240px, 50vw); height: 4px; background: rgba(207, 227, 234, .15); }
+.storybar .bar i { display: block; height: 100%; background: var(--amber); }
 .touch-only { display: none; }
 @media (hover: none) and (pointer: coarse) {
   .touch-only { display: block; }
@@ -311,6 +362,7 @@ kbd {
     <span class="value crystal" id="crystals">0</span>
     <span class="label" id="speed">14 m/s</span>
     <span class="label ghost-label" id="ghostLine" hidden></span>
+    <ol class="race-list" id="raceList" hidden></ol>
   </div>
 </div>
 
@@ -319,6 +371,10 @@ kbd {
     <strong id="comboMult">x2</strong>
     <span id="comboCount">5 seri</span>
     <div class="bar"><i id="comboBar"></i></div>
+  </div>
+  <div class="storybar" id="storybar" hidden>
+    <span id="storyLabel">Bölüm 1</span>
+    <div class="bar"><i id="storyFill"></i></div>
   </div>
   <div class="bossbar" id="bossbar" hidden>
     <span>Gözcü · hayatta kal</span>
@@ -352,7 +408,10 @@ kbd {
   <div class="card">
     <div class="card-head">
       <p class="eyebrow">3D sonsuz koşu</p>
-      <span class="bank" id="bank">Kasa: 0 kristal</span>
+      <div class="head-right">
+        <span class="bank" id="bank">Kasa: 0 kristal</span>
+        <span class="cloud" id="cloudLine">Bu tarayıcıda kayıtlı</span>
+      </div>
     </div>
     <h1>Kehribar Hattı<span>Akkor topu karanlıkta yuvarla</span></h1>
 
@@ -375,19 +434,24 @@ kbd {
       </div>
       <p class="touch-only">Sağa / sola kaydır: şerit · yukarı kaydır ya da dokun: zıpla · aşağı kaydır: eğil · alttaki düğme: yetenek</p>
       <div class="legend">
-        <span><i style="background:var(--coral)"></i>Blok: zıpla</span>
-        <span><i style="background:#ff8a3d"></i>Bariyer: eğil</span>
-        <span><i style="background:#8a4dff"></i>Duvar: kaç</span>
-        <span><i style="background:var(--slider)"></i>Kayan blok</span>
+        <span><i style="background:var(--c-block)"></i>Blok: zıpla</span>
+        <span><i style="background:var(--c-bar)"></i>Bariyer: eğil</span>
+        <span><i style="background:var(--c-wall)"></i>Duvar: kaç</span>
+        <span><i style="background:var(--c-slider)"></i>Kayan blok</span>
         <span><i style="background:#c9d6dc"></i>Sarkaç: zıpla</span>
         <span><i style="background:var(--amber)"></i>Rampa: uç</span>
         <span><i style="background:#000;outline:1px solid var(--coral)"></i>Uçurum: zıpla ya da köprüden geç</span>
       </div>
-      <button class="btn" id="startBtn" type="button">Koşuya başla</button>
+      <button class="btn" id="startBtn" type="button">Sonsuz koşu</button>
+      <div class="row">
+        <button class="btn alt" id="storyBtn" type="button" style="--alt: var(--amber)">Hikaye modu<small id="storyInfo">10 bölüm</small></button>
+        <button class="btn alt" id="mpBtn" type="button" style="--alt: var(--crystal)">Çok oyunculu<small id="mpInfo">Aynı pistte yarış</small></button>
+      </div>
       <button class="btn alt" id="dailyBtn" type="button">Günlük meydan okuma<small id="dailyInfo">Herkes için aynı harita</small></button>
       <div class="row">
         <button class="ghost music-toggle" type="button">Müzik: Açık</button>
         <button class="ghost ghost-toggle" type="button">Hayalet: Açık</button>
+        <button class="ghost settings-open" type="button">Ayarlar</button>
       </div>
       <p class="eyebrow" id="bestLine">En iyi puan: 0</p>
     </section>
@@ -428,6 +492,7 @@ kbd {
     <button class="btn" id="resumeBtn" type="button">Devam et</button>
     <div class="row">
       <button class="ghost music-toggle" type="button">Müzik: Açık</button>
+      <button class="ghost settings-open" type="button">Ayarlar</button>
       <button class="ghost" id="quitBtn" type="button">Menüye dön</button>
     </div>
   </div>
@@ -448,11 +513,101 @@ kbd {
     <p class="new-best" id="newBest" hidden>Yeni rekor</p>
     <p class="eyebrow" id="bestLine2">En iyi: 0</p>
     <button class="btn" id="restartBtn" type="button">Tekrar koş</button>
+    <button class="ghost" id="levelsBtn" type="button" hidden>Bölümler</button>
     <button class="ghost" id="menuBtn" type="button">Menü, toplar ve görevler</button>
   </div>
 </div>
 
+<div class="overlay" id="storyMenu" hidden>
+  <div class="card">
+    <div class="card-head">
+      <p class="eyebrow">Hikaye modu</p>
+      <span class="bank" id="storyStars">0 / 30 yıldız</span>
+    </div>
+    <h2 style="color:var(--amber)">Kehribar'ın yolculuğu</h2>
+    <p>On bölüm, her birinde bir bitiş çizgisi. Bitirmek bir yıldız; kristal hedefleri ikinci ve üçüncü yıldız. Her yeni yıldız kasaya 15 kristal ekler. Son bölümde Büyük Gözcü bekliyor.</p>
+    <div class="levels" id="levelGrid"></div>
+    <button class="ghost" id="storyBack" type="button">Ana menü</button>
+  </div>
+</div>
+
+<div class="overlay" id="winMenu" hidden>
+  <div class="card">
+    <p class="eyebrow" id="winEyebrow">Bölüm 1 tamamlandı</p>
+    <h2 style="color:var(--amber)" id="winTitle">İlk Işık</h2>
+    <p class="stars big" id="winStars" aria-label="Yıldız">★☆☆</p>
+    <div class="results">
+      <div class="stat"><span class="label">Mesafe</span><span class="value" id="winDist">0</span></div>
+      <div class="stat"><span class="label">Kristal</span><span class="value crystal" id="winCrystals">0</span></div>
+      <div class="stat"><span class="label">Puan</span><span class="value" id="winScore">0</span></div>
+    </div>
+    <p id="winGoals"></p>
+    <p class="bank" id="winReward"></p>
+    <button class="btn" id="nextLevelBtn" type="button">Sonraki bölüm</button>
+    <div class="row">
+      <button class="ghost" id="retryLevelBtn" type="button">Tekrar oyna</button>
+      <button class="ghost" id="winLevelsBtn" type="button">Bölümler</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="settingsMenu" hidden>
+  <div class="card">
+    <p class="eyebrow">Görüntü ve ses</p>
+    <h2 style="color:var(--amber)">Ayarlar</h2>
+    <div class="setting"><span>Grafik kalitesi<small>Düşük: daha akıcı, Yüksek: en keskin</small></span>
+      <div class="seg" id="setQuality"><button type="button" data-v="low">Düşük</button><button type="button" data-v="mid">Orta</button><button type="button" data-v="high">Yüksek</button></div></div>
+    <label class="setting" for="setBloom"><span>Parlama efekti<small>Yalnızca yüksek kalitede</small></span><input type="checkbox" id="setBloom"></label>
+    <label class="setting" for="setLines"><span>Hız çizgileri</span><input type="checkbox" id="setLines"></label>
+    <div class="setting"><span>Ekran sarsıntısı</span>
+      <div class="seg" id="setShake"><button type="button" data-v="0">Kapalı</button><button type="button" data-v="0.5">Az</button><button type="button" data-v="1">Normal</button></div></div>
+    <label class="setting" for="setVol"><span>Ana ses</span><input type="range" id="setVol" min="0" max="100" step="5"></label>
+    <label class="setting" for="setMusicVol"><span>Müzik</span><input type="range" id="setMusicVol" min="0" max="100" step="5"></label>
+    <label class="setting" for="setSfxVol"><span>Efektler</span><input type="range" id="setSfxVol" min="0" max="100" step="5"></label>
+    <label class="setting" for="setCvd"><span>Renk körlüğü modu<small>Engeller kolay ayırt edilen renklerle çizilir</small></span><input type="checkbox" id="setCvd"></label>
+    <p class="msg" id="settingsNote"></p>
+    <button class="btn" id="settingsDone" type="button">Tamam</button>
+  </div>
+</div>
+
+<div class="overlay" id="mpMenu" hidden>
+  <div class="card">
+    <div class="card-head">
+      <p class="eyebrow">Çok oyunculu</p>
+      <span class="bank" id="mpStatus">Bağlanıyor…</span>
+    </div>
+    <h2 style="color:var(--crystal)">Aynı pistte yarış</h2>
+    <p id="mpIntro">Bir oda aç ya da açık bir odaya katıl. Başlatınca odadaki herkes aynı engel dizisinde koşar; diğer oyuncuları pistte yanında görürsün. En yüksek puan kazanır.</p>
+    <div class="panel" id="mpLobby">
+      <button class="btn" id="mpCreate" type="button">Yeni yarış odası aç</button>
+      <h3>Açık odalar</h3>
+      <ul class="list" id="mpRooms"></ul>
+      <div class="row">
+        <input class="input" id="mpCode" type="text" placeholder="Oda kodu" autocomplete="off" maxlength="40" aria-label="Oda kodu">
+        <button class="ghost" id="mpJoin" type="button">Koda katıl</button>
+      </div>
+    </div>
+    <div class="panel" id="mpRoom" hidden>
+      <h3>Oda <small id="mpRoomCode"></small></h3>
+      <ul class="list" id="mpPlayers"></ul>
+      <p class="winner" id="mpWinner" hidden></p>
+      <button class="btn" id="mpStart" type="button">Yarışı başlat</button>
+      <button class="ghost" id="mpLeave" type="button">Odadan çık</button>
+    </div>
+    <p class="msg" id="mpMsg"></p>
+    <button class="ghost" id="mpBack" type="button">Ana menü</button>
+  </div>
+</div>
+
+<div class="countdown" id="countdown" hidden>3</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script>
 (() => {
   'use strict';
@@ -538,7 +693,10 @@ kbd {
     { id: 'daily',     name: 'Her gün',        desc: 'Günlük meydan okumayı oyna', test: r => r.daily && r.dist >= 100 },
     { id: 'collector', name: 'Koleksiyoncu',   desc: 'Tüm topları aç' },
     { id: 'maxed',     name: 'Usta',           desc: 'Bir yükseltmeyi sona çıkar' },
-    { id: 'ghost',     name: 'Kendini geç',    desc: 'Rekor hayaletini geç' }
+    { id: 'ghost',     name: 'Kendini geç',    desc: 'Rekor hayaletini geç' },
+    { id: 'story',     name: 'Efsane',         desc: 'Hikaye modunu bitir' },
+    { id: 'stars',     name: 'Yıldız avcısı',  desc: '30 yıldızın hepsini topla' },
+    { id: 'racer',     name: 'Yarışçı',        desc: 'Çok oyunculu bir yarış kazan' }
   ];
   const ACH_REWARD = 15;
 
@@ -552,10 +710,20 @@ kbd {
   const SHIELD_COST = 300;
 
   const $ = id => document.getElementById(id);
+  // Progress keys mirrored to the viewer's Claude account when cloud save is available
+  const SYNCED = new Set(['kehribar-best', 'kehribar-bank', 'kehribar-owned', 'kehribar-skin', 'kehribar-ach', 'kehribar-upgrades',
+    'kehribar-missions', 'kehribar-daily', 'kehribar-stats', 'kehribar-story', 'kehribar-settings', 'kehribar-music', 'kehribar-ghost-on']);
+  let onSyncedWrite = null;
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+    set(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+      if (onSyncedWrite && SYNCED.has(k)) onSyncedWrite();
+    }
   };
+  const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  const DEFAULT_SETTINGS = { quality: isTouch ? 'mid' : 'high', bloom: true, lines: true, shake: 1, vol: 80, music: 70, sfx: 90, cvd: false };
+  let settings = Object.assign({}, DEFAULT_SETTINGS, store.get('kehribar-settings', {}));
 
   // ---------- Random: Math.random normally, seeded by date in the daily challenge ----------
   function mulberry32(a) {
@@ -595,6 +763,7 @@ kbd {
   sunLight.position.set(-6, 10, 4);
   scene.add(sunLight);
 
+  let composer = null, bloomPass = null;
   let baseFov = 65;
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -603,6 +772,7 @@ kbd {
     baseFov = w / h < 0.8 ? 78 : 65;
     camera.fov = baseFov;
     camera.updateProjectionMatrix();
+    if (composer) composer.setSize(w, h);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -1107,6 +1277,14 @@ kbd {
       mesh.position.set(x, 0, z);
       e.rock = rock; e.mark = mark; e.r = 0.8; e.center = new THREE.Vector3(x, 18, z);
       e.fall = 17.2 * Math.max(speed, START_SPEED) / 65; e.landed = false;
+    } else if (kind === 'finish') {
+      mesh = new THREE.Group();
+      for (const sd of [-1, 1]) { const f = new THREE.Mesh(GEO.frame, MAT.frame); f.position.set(sd * 3.9, 3.2, 0); mesh.add(f); }
+      const banner = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 1.1), new THREE.MeshBasicMaterial({ map: finishTex(), side: THREE.DoubleSide }));
+      banner.position.y = 5.8; mesh.add(banner);
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 1.2), new THREE.MeshBasicMaterial({ map: finishTex(), transparent: true, opacity: 0.85 }));
+      line.rotation.x = -Math.PI / 2; line.position.y = 0.03; mesh.add(line);
+      mesh.position.set(0, 0, z);
     } else if (kind === 'trigger') {
       mesh = new THREE.Group(); mesh.position.set(0, 0, z); e.onPass = opts.onPass;
     } else if (kind === 'crystal') {
@@ -1149,9 +1327,9 @@ kbd {
     if (audio) return;
     try {
       audio = new (window.AudioContext || window.webkitAudioContext)();
-      master = audio.createGain(); master.gain.value = 0.9; master.connect(audio.destination);
-      sfxBus = audio.createGain(); sfxBus.connect(master);
-      musicBus = audio.createGain(); musicBus.gain.value = musicOn ? 0.7 : 0; musicBus.connect(master);
+      master = audio.createGain(); master.gain.value = settings.vol / 100; master.connect(audio.destination);
+      sfxBus = audio.createGain(); sfxBus.gain.value = settings.sfx / 100; sfxBus.connect(master);
+      musicBus = audio.createGain(); musicBus.gain.value = musicOn ? 0.7 * settings.music / 100 : 0; musicBus.connect(master);
       noiseBuf = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -1239,7 +1417,7 @@ kbd {
 
   function setMusic(on) {
     musicOn = on; store.set('kehribar-music', on);
-    if (musicBus) musicBus.gain.setTargetAtTime(on ? 0.7 : 0, audio.currentTime, 0.05);
+    if (musicBus) musicBus.gain.setTargetAtTime(on ? 0.7 * settings.music / 100 : 0, audio.currentTime, 0.05);
     document.querySelectorAll('.music-toggle').forEach(b => b.textContent = `Müzik: ${on ? 'Açık' : 'Kapalı'}`);
   }
 
@@ -1253,6 +1431,7 @@ kbd {
   let missions = store.get('kehribar-missions', null);
   let dailyRec = store.get('kehribar-daily', { date: '', best: 0, rewarded: false });
   if (dailyRec.date !== todayKey()) dailyRec = { date: todayKey(), best: 0, rewarded: false };
+  let storyStars = store.get('kehribar-story', {});
 
   function addBank(n) { bank += n; store.set('kehribar-bank', bank); }
   const powerDuration = k => POWER_TIME[k] * (1 + 0.25 * upgrades[k]);
@@ -1282,6 +1461,7 @@ kbd {
   let daily = false;
   let boss = null, bossDoneLevel = -1;
   let timeScale = 1, falling = false;
+  let story = null, raceMode = false, finishSpawned = false, lastMode = 'normal', lastOpts = {};
   let energy = 0, abilityT = 0, abilityMax = 1, abilityKind = null, invulnT = 0;
   const pw = { magnet: 0, double: 0, slow: 0 };
   const pwMax = { magnet: 1, double: 1, slow: 1 };
@@ -1303,7 +1483,17 @@ kbd {
     upgradeList: $('upgradeList'), upgradeMsg: $('upgradeMsg'), dailyInfo: $('dailyInfo'),
     abilityBtn: $('abilityBtn'), abilityName: $('abilityName'), abilityFill: $('abilityFill'), abilityHint: $('abilityHint'),
     flash: $('flash'), ghostLine: $('ghostLine'), overTitle: $('overTitle'),
-    statGrid: $('statGrid'), causeList: $('causeList'), deathTotal: $('deathTotal')
+    statGrid: $('statGrid'), causeList: $('causeList'), deathTotal: $('deathTotal'),
+    cloudLine: $('cloudLine'), storyInfo: $('storyInfo'), mpInfo: $('mpInfo'),
+    storyMenu: $('storyMenu'), storyStars: $('storyStars'), levelGrid: $('levelGrid'),
+    winMenu: $('winMenu'), winEyebrow: $('winEyebrow'), winTitle: $('winTitle'), winStars: $('winStars'),
+    winDist: $('winDist'), winCrystals: $('winCrystals'), winScore: $('winScore'), winGoals: $('winGoals'), winReward: $('winReward'),
+    nextLevelBtn: $('nextLevelBtn'), levelsBtn: $('levelsBtn'), restartBtn: $('restartBtn'),
+    storybar: $('storybar'), storyLabel: $('storyLabel'), storyFill: $('storyFill'),
+    settingsMenu: $('settingsMenu'), settingsNote: $('settingsNote'),
+    mpMenu: $('mpMenu'), mpStatus: $('mpStatus'), mpIntro: $('mpIntro'), mpLobby: $('mpLobby'), mpRoom: $('mpRoom'),
+    mpRooms: $('mpRooms'), mpCode: $('mpCode'), mpRoomCode: $('mpRoomCode'), mpPlayers: $('mpPlayers'),
+    mpWinner: $('mpWinner'), mpStart: $('mpStart'), mpMsg: $('mpMsg'), raceList: $('raceList'), countdown: $('countdown')
   };
 
   // ---------- Toasts ----------
@@ -1454,7 +1644,7 @@ kbd {
     const d = new Date();
     ui.dailyInfo.textContent = `${d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} · bugünkü en iyi: ${dailyRec.best}` +
       (dailyRec.rewarded ? '' : ' · 500 m koş: +40 kristal');
-    renderSkins(); renderMissions(ui.missionList, false); renderAchievements(); renderUpgrades(); renderStats();
+    renderSkins(); renderMissions(ui.missionList, false); renderAchievements(); renderUpgrades(); renderStats(); renderPlayInfo();
   }
   function selectTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
@@ -1486,19 +1676,38 @@ kbd {
     ui.bossbar.hidden = true;
   }
 
-  function startRun(isDaily = false) {
+  function hideOverlays() {
+    for (const el of [ui.menu, ui.overMenu, ui.pauseMenu, ui.storyMenu, ui.winMenu, ui.settingsMenu, ui.mpMenu]) el.hidden = true;
+  }
+
+  // mode: 'normal' | 'daily' | 'story' (opts.idx) | 'race' (opts.seed)
+  function startRun(mode = 'normal', opts = {}) {
+    if (mode === true) mode = 'daily';
+    if (mode === false) mode = 'normal';
     initAudio();
     if (audio && audio.state === 'suspended') audio.resume();
     resetRunState();
-    daily = isDaily; run.daily = isDaily;
-    ghostData = loadGhost();
-    rng = daily ? mulberry32(Number(todayKey())) : Math.random;
-    speed = START_SPEED;
+    lastMode = mode; lastOpts = opts;
+    daily = mode === 'daily'; run.daily = daily;
+    story = mode === 'story' ? { idx: opts.idx, def: LEVELS[opts.idx] } : null;
+    raceMode = mode === 'race';
+    ghostData = story || raceMode ? null : loadGhost();
+    rng = daily ? mulberry32(Number(todayKey())) : story ? mulberry32(story.def.seed)
+        : raceMode ? mulberry32(opts.seed >>> 0) : Math.random;
+    speed = story ? story.def.speed : START_SPEED;
+    finishSpawned = false;
+    if (story) { zoneIdx = story.def.zone; blendZone(ZONES[zoneIdx], 1); }
     shield = upgrades.shield > 0;
     state = 'play';
-    ui.menu.hidden = true; ui.overMenu.hidden = true; ui.pauseMenu.hidden = true;
+    hideOverlays();
     ui.hud.hidden = false; ui.pauseBtn.hidden = false; ui.powers.hidden = false; ui.abilityBtn.hidden = false;
+    ui.storybar.hidden = !story; ui.raceList.hidden = !raceMode;
     for (let i = 0; i < 5; i++) addEntity('crystal', 1, -14 - i * 2.2);
+    if (story) {
+      showBanner(`Bölüm ${story.idx + 1}`, story.def.name, ZONES[zoneIdx].css);
+      toast('Hedef', story.def.goal || `★★ ${story.def.n2} kristal · ★★★ ${story.def.n3} kristal`, 'var(--double)');
+    }
+    if (raceMode) sendRacePresence(true);
   }
 
   function finishRun() {
@@ -1507,10 +1716,13 @@ kbd {
 
   function toMenu() {
     if (state === 'paused') { recordStats(null); finishRun(); }
+    if (raceMode && mp.race) mp.race.r.presence({ phase: 'lobby' }).catch(() => {});
     resetRunState();
     state = 'menu';
-    rng = Math.random;
-    ui.overMenu.hidden = true; ui.pauseMenu.hidden = true;
+    rng = Math.random; story = null; raceMode = false;
+    zoneIdx = 0;
+    hideOverlays();
+    ui.storybar.hidden = true; ui.raceList.hidden = true;
     ui.hud.hidden = true; ui.pauseBtn.hidden = true; ui.powers.hidden = true; ui.combo.hidden = true; ui.abilityBtn.hidden = true;
     ui.zoneBanner.hidden = true;
     renderMenu();
@@ -1531,7 +1743,7 @@ kbd {
     recordStats(cause);
     const final = Math.floor(score);
     const isBest = final > best;
-    if (ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
+    if (!story && !raceMode && ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
     if (isBest) { best = final; store.set('kehribar-best', best); }
     addBank(crystals);
     let dailyNote = '';
@@ -1557,7 +1769,15 @@ kbd {
     ui.newBest.hidden = !isBest;
     ui.bestLine2.textContent = `En iyi puan: ${best}`;
     ui.pauseBtn.hidden = true; ui.combo.hidden = true; ui.powers.hidden = true; ui.bossbar.hidden = true; ui.abilityBtn.hidden = true;
-    setTimeout(() => { if (state === 'over') { ui.overMenu.hidden = false; $('restartBtn').focus(); } }, 650);
+    ui.storybar.hidden = true;
+    if (story) ui.overEyebrow.textContent = `Bölüm ${story.idx + 1} · ${story.def.name}`;
+    if (raceMode) {
+      ui.overEyebrow.textContent = 'Yarış · sonuçlar yarış odasında';
+      if (mp.race) mp.race.r.presence({ phase: 'dead', d: Math.floor(dist), sc: final }).catch(() => {});
+    }
+    ui.restartBtn.textContent = raceMode ? 'Yarış odasına dön' : story ? 'Tekrar dene' : 'Tekrar koş';
+    ui.levelsBtn.hidden = !story;
+    setTimeout(() => { if (state === 'over') { ui.overMenu.hidden = false; ui.restartBtn.focus(); } }, 650);
   }
 
   function showBanner(level, name, color) {
@@ -1571,7 +1791,7 @@ kbd {
   }
 
   // ---------- Boss: the Sentinel ----------
-  function startBoss() {
+  function startBoss(opts = {}) {
     bossDoneLevel = zoneLevel;
     const col = ZONES[zoneIdx].line;
     const g = new THREE.Group();
@@ -1587,11 +1807,13 @@ kbd {
       r.rotation.x = Math.PI / 2 + i * 0.5; g.add(r); rings.push(r);
     }
     g.position.set(0, 10, -130);
-    g.scale.setScalar(1.25);
+    g.scale.setScalar(opts.big ? 2.1 : 1.25);
     scene.add(g);
-    boss = { mesh: g, core, shell, rings, eye, t: 0, life: BOSS_TIME, fireT: 1.0, tele: null };
+    const life = opts.time || BOSS_TIME;
+    boss = { mesh: g, core, shell, rings, eye, t: 0, life, maxLife: life, big: !!opts.big, fireT: 1.0, tele: null };
     ui.bossbar.hidden = false;
-    showBanner(`Bölge ${zoneLevel + 1} sonu`, 'Gözcü geliyor!', '#ff5a5f');
+    if (opts.big) showBanner('Son bölüm', 'Büyük Gözcü!', '#ff5a5f');
+    else showBanner(story ? story.def.name : `Bölge ${zoneLevel + 1} sonu`, 'Gözcü geliyor!', '#ff5a5f');
     sfx.boss();
   }
   function updateBoss(dt) {
@@ -1599,7 +1821,7 @@ kbd {
     b.t += dt;
     const targetX = LANES[lane] * 0.8;
     b.mesh.position.x += (targetX - b.mesh.position.x) * Math.min(1, dt * 1.5);
-    b.mesh.position.y += (5 + Math.sin(b.t * 2) * 0.4 - b.mesh.position.y) * Math.min(1, dt * 2);
+    b.mesh.position.y += ((b.big ? 7.5 : 5) + Math.sin(b.t * 2) * 0.4 - b.mesh.position.y) * Math.min(1, dt * 2);
     b.mesh.position.z += (-30 - b.mesh.position.z) * Math.min(1, dt * 1.6);
     b.core.rotation.y += dt * 1.5; b.shell.rotation.y -= dt * 0.6; b.shell.rotation.x += dt * 0.3;
     b.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -1.2 : 0.9); });
@@ -1607,8 +1829,8 @@ kbd {
     if (b.t < 1.6) return;
 
     b.life -= dt;
-    ui.bossFill.style.width = `${Math.max(0, b.life / BOSS_TIME) * 100}%`;
-    const interval = Math.max(0.75, 1.5 - zoneLevel * 0.12);
+    ui.bossFill.style.width = `${Math.max(0, b.life / b.maxLife) * 100}%`;
+    const interval = b.big ? Math.max(0.6, 1.1 - b.t * 0.02) : Math.max(0.75, 1.5 - zoneLevel * 0.12);
     b.fireT -= dt;
     if (b.fireT <= 0 && !b.tele && b.life > 1) {
       const l = Math.random() < 0.7 ? lane : Math.floor(Math.random() * 3);
@@ -1639,6 +1861,7 @@ kbd {
       addEnergy(40);
       toast('Gözcü atlatıldı', `+${bonus} kristal · +250 puan`, 'var(--coral)');
       sfx.win();
+      if (b.big && story) setTimeout(winLevel, 900);
     }
   }
 
@@ -1819,6 +2042,509 @@ kbd {
     }
   }
 
+  // ---------- Story mode ----------
+  const DEFAULT_GEN = { fork: [300, 0.06], bridge: [250, 0.06], special: [0, 0.2], ramp: [200, 0.09], pendulum: [800, 0.07], slider: [400, 0.14] };
+  const OFF = [9e9, 0];
+  const gen = o => Object.assign({ fork: OFF, bridge: OFF, special: OFF, ramp: OFF, pendulum: OFF, slider: OFF }, o);
+  const LEVELS = [
+    { name: 'İlk Işık',          zone: 0, len: 600,  seed: 1101, speed: 13, max: 22, n2: 20, n3: 32, gen: gen({ ramp: [150, 0.06] }) },
+    { name: 'Rampa Sokağı',      zone: 0, len: 800,  seed: 2203, speed: 14, max: 26, n2: 35, n3: 60, gen: gen({ ramp: [80, 0.25], slider: [300, 0.1] }) },
+    { name: 'Gece Çatalı',       zone: 1, len: 900,  seed: 3307, speed: 15, max: 28, n2: 35, n3: 60, gen: gen({ fork: [150, 0.16], ramp: [200, 0.06], slider: [300, 0.12] }) },
+    { name: 'Kum Fırtınası',     zone: 2, len: 1000, seed: 4409, speed: 15, max: 28, n2: 35, n3: 60, gen: gen({ special: [0, 0.3], ramp: [200, 0.06], bridge: [250, 0.06] }) },
+    { name: 'Buz Köprüleri',     zone: 3, len: 1000, seed: 5501, speed: 16, max: 30, n2: 40, n3: 65, gen: gen({ bridge: [120, 0.2], ramp: [200, 0.06], slider: [300, 0.12] }) },
+    { name: 'Derinlik',          zone: 4, len: 1100, seed: 6607, speed: 16, max: 30, n2: 40, n3: 70, gen: gen({ special: [0, 0.32], slider: [200, 0.16], fork: [300, 0.08] }) },
+    { name: 'Gözcü\'nün Bekçisi', zone: 1, len: 1200, seed: 7703, speed: 17, max: 32, n2: 45, n3: 75, bossAt: 650,
+      gen: gen({ fork: [300, 0.06], bridge: [250, 0.06], ramp: [200, 0.08], pendulum: [400, 0.07], slider: [200, 0.14] }) },
+    { name: 'Lav Akıntısı',      zone: 5, len: 1300, seed: 8807, speed: 18, max: 34, n2: 50, n3: 85, gen: gen({ pendulum: [200, 0.12], slider: [200, 0.16], bridge: [200, 0.1], ramp: [200, 0.06] }) },
+    { name: 'Meteor Yağmuru',    zone: 6, len: 1400, seed: 9901, speed: 18, max: 36, n2: 55, n3: 90, gen: gen({ special: [0, 0.35], fork: [300, 0.08], ramp: [200, 0.1] }) },
+    { name: 'Büyük Gözcü',       zone: 1, len: 0,    seed: 1013, speed: 18, max: 34, n2: 40, n3: 70, bossAt: 450, bossTime: 24, final: true,
+      goal: 'Büyük Gözcü\'yü atlat · ★★ 40 · ★★★ 70 kristal', gen: gen({ ramp: [150, 0.08], slider: [150, 0.14], pendulum: [250, 0.08] }) }
+  ];
+  const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+  const totalStars = () => LEVELS.reduce((n, _, i) => n + (storyStars[i] || 0), 0);
+  function finishTex() {
+    if (finishTex.t) return finishTex.t;
+    finishTex.t = canvasTex(256, 32, (g, w, h) => {
+      const c = 16;
+      for (let x = 0; x < w / c; x++) for (let y = 0; y < h / c; y++) { g.fillStyle = (x + y) % 2 ? '#111' : '#f4f4f4'; g.fillRect(x * c, y * c, c, c); }
+    });
+    return finishTex.t;
+  }
+  function renderPlayInfo() {
+    ui.storyInfo.textContent = `10 bölüm · ${totalStars()} / 30 yıldız`;
+  }
+  function openStory() {
+    ui.menu.hidden = true; ui.storyMenu.hidden = false;
+    ui.storyStars.textContent = `${totalStars()} / 30 yıldız`;
+    ui.levelGrid.innerHTML = '';
+    LEVELS.forEach((d, i) => {
+      const open = i === 0 || (storyStars[i - 1] || 0) > 0;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'level'; b.disabled = !open; b.id = `level-${i}`;
+      b.style.setProperty('--zc', ZONES[d.zone].css);
+      const t = document.createElement('b'); t.textContent = `${i + 1}. ${d.name}`;
+      const st = document.createElement('span'); st.className = 'stars'; st.textContent = starText(storyStars[i] || 0);
+      const m = document.createElement('span'); m.className = 'meta';
+      m.textContent = open ? `${ZONES[d.zone].name} · ${d.len ? d.len + ' m' : 'boss'} · ★★★ ${d.n3}` : 'Önceki bölümü bitir';
+      b.append(t, st, m);
+      b.addEventListener('click', () => startRun('story', { idx: i }));
+      ui.levelGrid.append(b);
+    });
+    const first = ui.levelGrid.querySelector('button:not(:disabled):last-of-type') || $('storyBack');
+    first.focus();
+  }
+  function winLevel() {
+    if (state !== 'play' || !story) return;
+    state = 'won';
+    sfx.win(); flashScreen(ZONES[zoneIdx].css);
+    const d = story.def, i = story.idx;
+    const stars = 1 + (crystals >= d.n2 ? 1 : 0) + (crystals >= d.n3 ? 1 : 0);
+    const prev = storyStars[i] || 0;
+    const gained = Math.max(0, stars - prev);
+    if (stars > prev) { storyStars[i] = stars; store.set('kehribar-story', storyStars); }
+    recordStats(null);
+    const final = Math.floor(score);
+    if (final > best) { best = final; store.set('kehribar-best', best); }
+    addBank(crystals + gained * 15);
+    if (i === LEVELS.length - 1) unlock('story');
+    if (totalStars() >= 30) unlock('stars');
+    finishRun();
+    ui.winEyebrow.textContent = `Bölüm ${i + 1} tamamlandı`;
+    ui.winTitle.textContent = d.name;
+    ui.winStars.textContent = starText(stars);
+    ui.winStars.setAttribute('aria-label', `${stars} yıldız`);
+    ui.winDist.textContent = `${Math.floor(dist)} m`;
+    ui.winCrystals.textContent = crystals;
+    ui.winScore.textContent = final;
+    ui.winGoals.textContent = `★★ ${d.n2} kristal · ★★★ ${d.n3} kristal`;
+    ui.winReward.textContent = `+${crystals} kristal${gained ? ` · ${gained} yeni yıldız +${gained * 15}` : ''} · Kasa: ${bank}`;
+    ui.nextLevelBtn.hidden = i >= LEVELS.length - 1;
+    ui.hud.hidden = true; ui.pauseBtn.hidden = true; ui.combo.hidden = true; ui.powers.hidden = true;
+    ui.bossbar.hidden = true; ui.abilityBtn.hidden = true; ui.storybar.hidden = true;
+    setTimeout(() => { if (state === 'won') { ui.winMenu.hidden = false; (ui.nextLevelBtn.hidden ? $('winLevelsBtn') : ui.nextLevelBtn).focus(); } }, 700);
+  }
+
+  // ---------- Settings, bloom and speed lines ----------
+  const OBSTACLE_COLORS = {
+    normal: { block: COLORS.coral, bar: COLORS.bar, wall: COLORS.wall, slider: COLORS.slider, orb: COLORS.coral },
+    cvd:    { block: 0xd55e00, bar: 0x56b4e9, wall: 0x0072b2, slider: 0xf0e442, orb: 0xcc79a7 }
+  };
+  function setupBloom() {
+    if (composer || !THREE.EffectComposer || !THREE.UnrealBloomPass || !THREE.RenderPass) return;
+    try {
+      composer = new THREE.EffectComposer(renderer);
+      composer.addPass(new THREE.RenderPass(scene, camera));
+      bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.4, 0.72);
+      composer.addPass(bloomPass);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    } catch { composer = null; bloomPass = null; }
+  }
+  const bloomOn = () => !!composer && settings.bloom && settings.quality === 'high';
+  function applySettings() {
+    const dpr = window.devicePixelRatio || 1;
+    const pr = settings.quality === 'low' ? 1 : settings.quality === 'mid' ? Math.min(dpr, 1.5) : Math.min(dpr, 2);
+    renderer.setPixelRatio(pr);
+    if (settings.bloom && settings.quality === 'high') setupBloom();
+    if (composer) composer.setPixelRatio(pr);
+    resize();
+    if (master) {
+      master.gain.value = settings.vol / 100;
+      sfxBus.gain.value = settings.sfx / 100;
+      musicBus.gain.value = musicOn ? 0.7 * settings.music / 100 : 0;
+    }
+    document.body.classList.toggle('cvd', settings.cvd);
+    const pal = OBSTACLE_COLORS[settings.cvd ? 'cvd' : 'normal'];
+    for (const k of ['block', 'bar', 'wall', 'slider']) { MAT[k].color.setHex(pal[k]); MAT[k].emissive.setHex(pal[k]); }
+    MAT.orb.color.setHex(pal.orb);
+    fxPoints.visible = settings.quality !== 'low';
+    renderSettingsUI();
+  }
+  function renderSettingsUI() {
+    document.querySelectorAll('#setQuality button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings.quality)));
+    document.querySelectorAll('#setShake button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.v) === settings.shake)));
+    $('setBloom').checked = settings.bloom; $('setLines').checked = settings.lines; $('setCvd').checked = settings.cvd;
+    $('setVol').value = settings.vol; $('setMusicVol').value = settings.music; $('setSfxVol').value = settings.sfx;
+    let note = '';
+    if (settings.bloom && settings.quality !== 'high') note = 'Parlama efekti yalnızca yüksek kalitede açılır.';
+    else if (settings.bloom && !composer) note = 'Parlama efekti bu cihazda yüklenemedi.';
+    ui.settingsNote.textContent = note;
+  }
+  function saveSettings() { store.set('kehribar-settings', settings); applySettings(); }
+  let settingsReturn = null;
+  function openSettings(from) {
+    settingsReturn = from || ui.menu;
+    if (settingsReturn) settingsReturn.hidden = true;
+    renderSettingsUI();
+    ui.settingsMenu.hidden = false;
+    $('settingsDone').focus();
+  }
+  function closeSettings() {
+    ui.settingsMenu.hidden = true;
+    if (settingsReturn) settingsReturn.hidden = false;
+  }
+  document.querySelectorAll('#setQuality button').forEach(b => b.addEventListener('click', () => { settings.quality = b.dataset.v; saveSettings(); }));
+  document.querySelectorAll('#setShake button').forEach(b => b.addEventListener('click', () => { settings.shake = Number(b.dataset.v); saveSettings(); }));
+  $('setBloom').addEventListener('change', e => { settings.bloom = e.target.checked; saveSettings(); });
+  $('setLines').addEventListener('change', e => { settings.lines = e.target.checked; saveSettings(); });
+  $('setCvd').addEventListener('change', e => { settings.cvd = e.target.checked; saveSettings(); });
+  for (const [id, key] of [['setVol', 'vol'], ['setMusicVol', 'music'], ['setSfxVol', 'sfx']]) {
+    $(id).addEventListener('input', e => { settings[key] = Number(e.target.value); applySettings(); });
+    $(id).addEventListener('change', () => { initAudio(); saveSettings(); sfx.lane(); });
+  }
+
+  const LINE_N = 70;
+  const slPos = new Float32Array(LINE_N * 6);
+  const slSeed = Array.from({ length: LINE_N }, () => ({
+    x: (Math.random() < 0.5 ? -1 : 1) * frand(3.6, 10), y: frand(0.3, 7.5), z: frand(-70, 8)
+  }));
+  const slGeo = new THREE.BufferGeometry();
+  slGeo.setAttribute('position', new THREE.BufferAttribute(slPos, 3));
+  const slMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  const speedLines = new THREE.LineSegments(slGeo, slMat);
+  speedLines.frustumCulled = false;
+  scene.add(speedLines);
+  function updateSpeedLines(dt, dz) {
+    const fast = Math.max(0, Math.min(1, (speed * timeScale - 22) / 18)) + (flying ? 0.35 : 0) + (invulnT > 0 ? 0.6 : 0);
+    const target = settings.lines && state === 'play' ? Math.min(0.55, fast * 0.5) : 0;
+    slMat.opacity += (target - slMat.opacity) * Math.min(1, dt * 4);
+    speedLines.visible = slMat.opacity > 0.01;
+    if (!speedLines.visible) return;
+    slMat.color.copy(zc.line).lerp(tmpColor.setHex(0xffffff), 0.5);
+    const len = 1.5 + fast * 6;
+    for (let i = 0; i < LINE_N; i++) {
+      const p = slSeed[i];
+      p.z += dz * 1.8;
+      if (p.z > 8) p.z -= 78;
+      slPos.set([p.x, p.y, p.z, p.x, p.y, p.z - len], i * 6);
+    }
+    slGeo.attributes.position.needsUpdate = true;
+  }
+
+  // ---------- Cloud save: the viewer's Claude account (db capability) ----------
+  const cloud = { ref: null, ready: false, timer: null, name: '', pushing: false, again: false };
+  let localUpdated = store.get('kehribar-updated', 0);
+  function setCloudLine(st) {
+    const map = {
+      local: 'Bu tarayıcıda kayıtlı',
+      saving: 'Hesabına kaydediliyor…',
+      saved: `Claude hesabında kayıtlı${cloud.name ? ' · ' + cloud.name : ''}`,
+      readonly: 'Hesaba yazma iznin yok; bu tarayıcıda kayıtlı',
+      error: 'Hesaba kaydedilemedi; bu tarayıcıda kayıtlı'
+    };
+    ui.cloudLine.textContent = map[st] || map.local;
+    ui.cloudLine.classList.toggle('ok', st === 'saved');
+  }
+  function snapshotProgress() {
+    return { v: 1, updatedAt: localUpdated, best, bank, owned, skin, achieved, upgrades, missions, dailyRec, stats, storyStars, settings, musicOn, ghostOn };
+  }
+  function markDirty() {
+    localUpdated = Date.now();
+    try { localStorage.setItem('kehribar-updated', JSON.stringify(localUpdated)); } catch {}
+    if (!cloud.ready) return;
+    clearTimeout(cloud.timer);
+    cloud.timer = setTimeout(pushCloud, 1500);
+  }
+  async function pushCloud() {
+    if (!cloud.ready) return;
+    if (cloud.pushing) { cloud.again = true; return; }
+    cloud.pushing = true; setCloudLine('saving');
+    try {
+      await cloud.ref.set(JSON.parse(JSON.stringify(snapshotProgress())));
+      setCloudLine('saved');
+    } catch (e) {
+      if (e && e.code === 'invalid_argument') { cloud.ready = false; setCloudLine('readonly'); }
+      else setCloudLine('error');
+    }
+    cloud.pushing = false;
+    if (cloud.again) { cloud.again = false; pushCloud(); }
+  }
+  function applyProgress(p) {
+    const hold = onSyncedWrite; onSyncedWrite = null;
+    best = Math.max(best, Number(p.best) || 0);
+    if (Number.isFinite(p.bank)) bank = p.bank;
+    if (Array.isArray(p.owned)) owned = [...new Set([...owned, ...p.owned])].filter(id => SKINS.some(s => s.id === id));
+    if (typeof p.skin === 'string' && owned.includes(p.skin)) skin = p.skin;
+    if (Array.isArray(p.achieved)) achieved = [...new Set([...achieved, ...p.achieved])];
+    if (p.upgrades) upgrades = Object.assign({ magnet: 0, double: 0, slow: 0, shield: 0 }, p.upgrades);
+    if (Array.isArray(p.missions) && p.missions.length) missions = p.missions;
+    if (p.dailyRec && p.dailyRec.date === todayKey()) dailyRec = p.dailyRec;
+    if (p.stats) stats = Object.assign(stats, p.stats);
+    if (p.storyStars) for (const [k, v] of Object.entries(p.storyStars)) storyStars[k] = Math.max(storyStars[k] || 0, v);
+    if (p.settings) settings = Object.assign({}, DEFAULT_SETTINGS, p.settings);
+    if (typeof p.musicOn === 'boolean') musicOn = p.musicOn;
+    if (typeof p.ghostOn === 'boolean') ghostOn = p.ghostOn;
+    store.set('kehribar-best', best); store.set('kehribar-bank', bank); store.set('kehribar-owned', owned);
+    store.set('kehribar-skin', skin); store.set('kehribar-ach', achieved); store.set('kehribar-upgrades', upgrades);
+    store.set('kehribar-missions', missions); store.set('kehribar-daily', dailyRec); store.set('kehribar-stats', stats);
+    store.set('kehribar-story', storyStars); store.set('kehribar-settings', settings);
+    store.set('kehribar-music', musicOn); store.set('kehribar-ghost-on', ghostOn);
+    applySkin(skin); applySettings(); setMusic(musicOn); setGhost(ghostOn);
+    fillMissions(); renderMenu();
+    onSyncedWrite = hold;
+  }
+  function withTimeout(p, ms) {
+    return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
+  }
+  async function initCloud() {
+    setCloudLine('local');
+    try {
+      if (!window.claude || typeof window.claude.use !== 'function') return;
+      const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      if (!db || !user) return;
+      const uid = await user.id();
+      if (!uid) return;
+      const me = await user.me();
+      cloud.name = me.name || '';
+      cloud.ref = db.doc(`data/users/${uid}/progress`);
+      const snap = await withTimeout(cloud.ref.get(), 10000);
+      cloud.ready = true;
+      const p = snap.exists ? snap.data() : null;
+      if (p && (p.updatedAt || 0) > localUpdated) {
+        applyProgress(p);
+        localUpdated = p.updatedAt;
+        try { localStorage.setItem('kehribar-updated', JSON.stringify(localUpdated)); } catch {}
+        setCloudLine('saved');
+        toast('İlerleme yüklendi', 'Claude hesabındaki kayıt bu cihaza getirildi', 'var(--shield)');
+      } else if (!p || localUpdated > (p.updatedAt || 0)) {
+        if (!localUpdated) localUpdated = Date.now();
+        pushCloud();
+      } else setCloudLine('saved');
+    } catch { setCloudLine('local'); }
+  }
+
+  // ---------- Multiplayer race (room capability) ----------
+  const mp = { room: null, user: null, myId: null, race: null, names: {}, status: 'connecting', sendT: 0, listT: 0, wonSeed: null };
+  const oppMeshes = new Map();
+  function setMpStatus(st) {
+    mp.status = st;
+    const map = { connecting: 'Bağlanıyor…', on: 'Bağlı', off: 'Kullanılamıyor' };
+    ui.mpStatus.textContent = map[st] || map.connecting;
+    ui.mpInfo.textContent = st === 'off' ? 'Bu görünümde kullanılamıyor' : 'Aynı pistte yarış';
+    renderMp();
+  }
+  async function initRoom() {
+    try {
+      if (!window.claude || typeof window.claude.use !== 'function') return setMpStatus('off');
+      const [room, user] = await Promise.all([window.claude.use('room'), window.claude.use('user')]);
+      mp.user = user;
+      if (!room) return setMpStatus('off');
+      mp.room = room;
+      mp.myId = user ? await user.id() : null;
+      room.onConnection(c => setMpStatus(c ? 'on' : 'connecting'), () => setMpStatus('off'));
+      room.onPeers(() => renderMp(), () => setMpStatus('off'));
+    } catch { setMpStatus('off'); }
+  }
+  function peerId(p) { return p.by || (p.presence && typeof p.presence.id === 'string' ? p.presence.id : null); }
+  function peerName(p) {
+    if (p.sameTab) return 'Sen';
+    const id = peerId(p);
+    return (id && mp.names[id]) || 'Oyuncu';
+  }
+  function resolveNames(peers) {
+    if (!mp.user) return;
+    const ids = [...new Set(peers.map(peerId).filter(Boolean))];
+    if (!ids.length) return;
+    mp.user.profiles(ids).then(ps => {
+      let changed = false;
+      for (const id of ids) { const n = ps[id] && ps[id].name; if (n && mp.names[id] !== n) { mp.names[id] = n; changed = true; } }
+      if (changed) renderMp();
+    }).catch(() => {});
+  }
+  function openMp() {
+    ui.menu.hidden = true; ui.mpMenu.hidden = false;
+    renderMp();
+    (mp.race ? ui.mpStart : $('mpCreate')).focus();
+  }
+  function cleanCode(raw) {
+    let c = String(raw || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9_.-]/g, '').slice(0, 40);
+    if (c && !/^[a-z0-9]/.test(c)) c = 'y' + c;
+    return c;
+  }
+  async function joinRace(raw) {
+    const code = cleanCode(raw);
+    if (!code) { ui.mpMsg.textContent = 'Bir oda kodu yaz.'; return; }
+    if (!mp.room) { ui.mpMsg.textContent = 'Çok oyunculu bu görünümde kullanılamıyor.'; return; }
+    await leaveRace();
+    ui.mpMsg.textContent = 'Odaya katılınıyor…';
+    try {
+      const r = await mp.room.join(code);
+      mp.race = { code, r, unsubs: [] };
+      mp.race.unsubs.push(r.onPeers(() => renderMp(), () => {}));
+      mp.race.unsubs.push(r.on('start', onRaceStart, () => {}));
+      await r.presence({ phase: 'lobby', skin, id: mp.myId, d: 0, sc: 0 });
+      mp.room.presence({ race: { code } }).catch(() => {});
+      ui.mpMsg.textContent = 'Arkadaşların bu kodla katılabilir. Herkes hazır olunca yarışı başlat.';
+    } catch (e) {
+      ui.mpMsg.textContent = e && e.code === 'not_permitted' ? 'Bu odaya katılma iznin yok.' : 'Odaya katılınamadı, biraz sonra yeniden dene.';
+      mp.race = null;
+    }
+    renderMp();
+  }
+  async function leaveRace() {
+    if (!mp.race) return;
+    const r = mp.race; mp.race = null;
+    r.unsubs.forEach(u => u());
+    try { await r.r.leave(); } catch {}
+    if (mp.room) mp.room.presence({ race: null }).catch(() => {});
+    for (const o of oppMeshes.values()) scene.remove(o.g);
+    oppMeshes.clear();
+    ui.mpMsg.textContent = '';
+    renderMp();
+  }
+  async function requestRaceStart() {
+    if (!mp.race) return;
+    ui.mpMsg.textContent = '';
+    try { await mp.race.r.emit('start', { seed: Math.floor(Math.random() * 1e9), delay: 3500 }); }
+    catch (e) {
+      ui.mpMsg.textContent = e && e.code === 'not_permitted'
+        ? 'Yarışı başlatma iznin yok. Odadaki biri başlatınca sen de başlarsın.'
+        : 'Başlatılamadı, yeniden dene.';
+    }
+  }
+  let countdownTimer = null;
+  function onRaceStart(msg) {
+    if (!mp.race || (state === 'play' && raceMode)) return;
+    const d = msg && msg.data ? msg.data : {};
+    const seed = Number(d.seed) >>> 0;
+    const delay = Math.min(6000, Math.max(1000, Number(d.delay) || 3500));
+    if (state === 'paused') toMenu();
+    hideOverlays();
+    initAudio();
+    const end = performance.now() + delay;
+    clearInterval(countdownTimer);
+    ui.countdown.hidden = false;
+    const tick = () => {
+      const left = end - performance.now();
+      if (left <= 0) {
+        clearInterval(countdownTimer); ui.countdown.hidden = true;
+        startRun('race', { seed });
+        return;
+      }
+      const n = String(Math.ceil(left / 1000));
+      if (ui.countdown.textContent !== n) { ui.countdown.textContent = n; sfx.lane(); }
+    };
+    tick();
+    countdownTimer = setInterval(tick, 50);
+  }
+  function sendRacePresence(force) {
+    if (!mp.race) return;
+    mp.race.r.presence({
+      phase: state === 'play' || state === 'paused' ? 'run' : 'dead', skin, id: mp.myId,
+      d: Math.round(dist * 10) / 10, x: Math.round(px * 100) / 100, y: Math.round(py * 100) / 100, sc: Math.floor(score)
+    }).catch(() => {});
+  }
+  function racePeers() { return mp.race ? mp.race.r.peers().filter(p => p.kind === 'viewer') : []; }
+  function renderMp() {
+    const off = mp.status === 'off';
+    ui.mpIntro.textContent = off
+      ? 'Çok oyunculu yarış, oyunu claude.ai\'de oturum açarak açan ve bu sayfaya erişimi olan kişiler arasında çalışır. Arkadaşlarını Paylaş menüsünden davet edebilirsin.'
+      : 'Bir oda aç ya da açık bir odaya katıl. Başlatınca odadaki herkes aynı engel dizisinde koşar; diğer oyuncuları pistte yanında görürsün. En yüksek puan kazanır.';
+    ui.mpLobby.hidden = off || !!mp.race;
+    ui.mpRoom.hidden = !mp.race;
+    if (!off && !mp.race && mp.room) {
+      const rooms = new Map();
+      for (const p of mp.room.peers()) {
+        const c = p.presence && p.presence.race && typeof p.presence.race.code === 'string' ? cleanCode(p.presence.race.code) : '';
+        if (c) rooms.set(c, (rooms.get(c) || 0) + 1);
+      }
+      ui.mpRooms.innerHTML = '';
+      if (!rooms.size) {
+        const li = document.createElement('li'); li.className = 'room-row'; li.textContent = 'Şu an açık oda yok. Yeni bir oda açabilirsin.';
+        ui.mpRooms.append(li);
+      }
+      for (const [code, n] of rooms) {
+        const li = document.createElement('li'); li.className = 'room-row';
+        const t = document.createElement('span'); t.textContent = `${code} · ${n} oyuncu`;
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = 'Katıl';
+        b.addEventListener('click', () => joinRace(code));
+        li.append(t, b); ui.mpRooms.append(li);
+      }
+    }
+    if (!mp.race) return;
+    ui.mpRoomCode.textContent = mp.race.code;
+    const peers = racePeers();
+    resolveNames(peers);
+    ui.mpPlayers.innerHTML = '';
+    const label = { lobby: 'Hazır', run: 'Koşuyor', dead: 'Bitirdi' };
+    const sorted = [...peers].sort((a, b) => (Number(b.presence.sc) || 0) - (Number(a.presence.sc) || 0));
+    for (const p of sorted) {
+      const pr = p.presence || {};
+      const li = document.createElement('li'); li.className = 'player' + (p.sameTab ? ' me' : '');
+      const n = document.createElement('span'); n.textContent = peerName(p);
+      const t = document.createElement('span'); t.className = 'tag';
+      t.textContent = `${label[pr.phase] || 'Hazır'}${pr.phase === 'dead' || pr.phase === 'run' ? ` · ${Math.floor(Number(pr.d) || 0)} m · ${Number(pr.sc) || 0} puan` : ''}`;
+      li.append(n, t); ui.mpPlayers.append(li);
+    }
+    const racers = peers.filter(p => p.presence && (p.presence.phase === 'dead' || p.presence.phase === 'run'));
+    const allDone = racers.length > 1 && racers.every(p => p.presence.phase === 'dead');
+    ui.mpWinner.hidden = !allDone;
+    if (allDone) {
+      const w = racers.reduce((a, b) => (Number(b.presence.sc) || 0) > (Number(a.presence.sc) || 0) ? b : a);
+      ui.mpWinner.textContent = w.sameTab ? `Kazandın! ${w.presence.sc} puan` : `Kazanan: ${peerName(w)} · ${w.presence.sc} puan`;
+      if (w.sameTab && mp.wonSeed !== lastOpts.seed) { mp.wonSeed = lastOpts.seed; unlock('racer'); }
+    }
+    ui.mpStart.disabled = state === 'play' && raceMode;
+  }
+  function renderRaceList() {
+    if (!mp.race) { ui.raceList.hidden = true; return; }
+    const rows = [{ name: 'Sen', d: dist, alive: state === 'play' || state === 'paused', me: true }];
+    for (const p of racePeers()) {
+      if (p.sameTab || !p.presence || (p.presence.phase !== 'run' && p.presence.phase !== 'dead')) continue;
+      rows.push({ name: peerName(p), d: Number(p.presence.d) || 0, alive: p.presence.phase === 'run' });
+    }
+    rows.sort((a, b) => b.d - a.d);
+    ui.raceList.innerHTML = '';
+    rows.slice(0, 6).forEach((r, i) => {
+      const li = document.createElement('li');
+      li.className = (r.me ? 'me' : '') + (r.alive ? '' : ' out');
+      li.textContent = `${i + 1}. ${r.name} · ${Math.floor(r.d)} m`;
+      ui.raceList.append(li);
+    });
+  }
+  function nameTag(text) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, map: canvasTex(256, 48, (g, w, h) => {
+      g.fillStyle = 'rgba(7,26,38,.65)'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#ffffff'; g.font = 'bold 26px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(String(text).slice(0, 18), w / 2, h / 2 + 1);
+    }) }));
+    sp.scale.set(1.7, 0.32, 1); sp.position.y = 1.0;
+    return sp;
+  }
+  function updateOpponents(dt) {
+    const seen = new Set();
+    if (mp.race && raceMode && (state === 'play' || state === 'paused' || state === 'over')) {
+      for (const p of racePeers()) {
+        if (p.sameTab || !p.presence || p.presence.phase !== 'run') continue;
+        const pr = p.presence;
+        seen.add(p.peer);
+        let o = oppMeshes.get(p.peer);
+        if (!o) {
+          const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.35, transparent: true, opacity: 0.8, roughness: 0.4 });
+          const g = new THREE.Group();
+          g.add(new THREE.Mesh(GEO.ghost, mat));
+          scene.add(g);
+          o = { g, mat, tag: null, name: '', skinId: null, d: Number(pr.d) || 0 };
+          oppMeshes.set(p.peer, o);
+        }
+        const name = peerName(p);
+        if (o.name !== name) { if (o.tag) o.g.remove(o.tag); o.tag = nameTag(name); o.g.add(o.tag); o.name = name; }
+        if (o.skinId !== pr.skin) {
+          const sk = SKINS.find(k => k.id === pr.skin) || SKINS[0];
+          o.mat.color.set(sk.base); o.mat.emissive.set(sk.base); o.skinId = pr.skin;
+        }
+        const k = Math.min(1, dt * 8);
+        o.d += speed * timeScale * dt;
+        o.d += ((Number(pr.d) || 0) - o.d) * k;
+        const tz = -(o.d - dist);
+        o.g.position.x += ((Number(pr.x) || 0) - o.g.position.x) * k;
+        o.g.position.y += ((Number(pr.y) || 0) + BALL_R - o.g.position.y) * k;
+        o.g.position.z = tz;
+        o.g.visible = tz > -95 && tz < 10;
+      }
+    }
+    for (const [peer, o] of oppMeshes) if (!seen.has(peer)) { scene.remove(o.g); oppMeshes.delete(peer); }
+  }
+
   // ---------- Input ----------
   function moveLane(d) {
     const n = Math.max(0, Math.min(2, lane + d));
@@ -1840,11 +2566,13 @@ kbd {
   }
 
   window.addEventListener('keydown', e => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     const k = e.key.toLowerCase();
+    if (state === 'won') return;
     if (k === 'm') { initAudio(); setMusic(!musicOn); return; }
     if (state === 'menu' || state === 'over') {
       const onButton = e.target && e.target.tagName === 'BUTTON';
-      if ((k === 'enter' || k === ' ') && !onButton) { e.preventDefault(); startRun(false); }
+      if ((k === 'enter' || k === ' ') && !onButton) { e.preventDefault(); startRun('normal'); }
       return;
     }
     if (k === 'p' || k === 'escape') { setPaused(state === 'play'); return; }
@@ -1872,10 +2600,24 @@ kbd {
     touch = null;
   }, { passive: true });
 
-  let lastDaily = false;
-  $('startBtn').addEventListener('click', () => { lastDaily = false; startRun(false); });
-  $('dailyBtn').addEventListener('click', () => { lastDaily = true; startRun(true); });
-  $('restartBtn').addEventListener('click', () => startRun(lastDaily));
+  $('startBtn').addEventListener('click', () => startRun('normal'));
+  $('dailyBtn').addEventListener('click', () => startRun('daily'));
+  ui.restartBtn.addEventListener('click', () => { if (lastMode === 'race') { toMenu(); openMp(); } else startRun(lastMode, lastOpts); });
+  $('storyBtn').addEventListener('click', openStory);
+  $('mpBtn').addEventListener('click', openMp);
+  ui.levelsBtn.addEventListener('click', () => { toMenu(); openStory(); });
+  $('storyBack').addEventListener('click', () => { ui.storyMenu.hidden = true; ui.menu.hidden = false; $('storyBtn').focus(); });
+  ui.nextLevelBtn.addEventListener('click', () => startRun('story', { idx: lastOpts.idx + 1 }));
+  $('retryLevelBtn').addEventListener('click', () => startRun('story', { idx: lastOpts.idx }));
+  $('winLevelsBtn').addEventListener('click', () => { toMenu(); openStory(); });
+  document.querySelectorAll('.settings-open').forEach(b => b.addEventListener('click', () => openSettings(b.closest('.overlay'))));
+  $('settingsDone').addEventListener('click', closeSettings);
+  $('mpCreate').addEventListener('click', () => joinRace(`yaris-${Math.random().toString(36).slice(2, 6)}`));
+  $('mpJoin').addEventListener('click', () => joinRace(ui.mpCode.value));
+  ui.mpCode.addEventListener('keydown', e => { if (e.key === 'Enter') joinRace(ui.mpCode.value); });
+  ui.mpStart.addEventListener('click', requestRaceStart);
+  $('mpLeave').addEventListener('click', () => { leaveRace(); });
+  $('mpBack').addEventListener('click', () => { ui.mpMenu.hidden = true; ui.menu.hidden = false; $('mpBtn').focus(); });
   $('menuBtn').addEventListener('click', toMenu);
   $('quitBtn').addEventListener('click', toMenu);
   $('resumeBtn').addEventListener('click', () => setPaused(false));
@@ -1898,13 +2640,19 @@ kbd {
       return;
     }
 
+    // Event odds: [minimum distance, probability]; story levels bring their own mix
+    const G = story ? story.def.gen : DEFAULT_GEN;
     const ev = rng();
-    if (dist > 300 && ev < 0.06) { spawnFork(); return 'long'; }
-    if (dist > 250 && ev < 0.12) { spawnBridge(); return 'long'; }
-    if (zone.special && ev < 0.32) { spawnSpecial(zone.special); return; }
+    let acc = G.fork[1];
+    if (dist > G.fork[0] && ev < acc) { spawnFork(); return 'long'; }
+    acc += G.bridge[1];
+    if (dist > G.bridge[0] && ev < acc) { spawnBridge(); return 'long'; }
+    acc += G.special[1];
+    if (zone.special && dist > G.special[0] && ev < acc) { spawnSpecial(zone.special); return; }
 
     const special = rng();
-    if (dist > 200 && special < 0.09) {            // ramp + sky crystal arc
+    let acc2 = G.ramp[1];
+    if (dist > G.ramp[0] && special < acc2) {     // ramp + sky crystal arc
       const l = Math.floor(rng() * 3);
       addEntity('ramp', l, z);
       const v = speed * timeScale;
@@ -1918,14 +2666,16 @@ kbd {
       nextSpawnAt = dist + v * (air + 0.4);
       return 'ramp';
     }
-    if (dist > 800 && special < 0.16) {            // pendulum gate across the whole road
+    acc2 += G.pendulum[1];
+    if (dist > G.pendulum[0] && special < acc2) { // pendulum gate across the whole road
       addEntity('pendulum', 1, z);
       crystalLine(Math.floor(rng() * 3), z - 8, 3);
       return;
     }
 
     const lanes = shuffle([0, 1, 2]);
-    if (dist > 400 && special < 0.3) {             // slider sweeping two adjacent lanes
+    acc2 += G.slider[1];
+    if (dist > G.slider[0] && special < acc2) {   // slider sweeping two adjacent lanes
       const l = rng() < 0.5 ? 0 : 1;
       addEntity('slider', l, z);
       const free = l === 0 ? 2 : 0;
@@ -2073,7 +2823,7 @@ kbd {
     const moving = state === 'play' || state === 'menu';
 
     if (playing) {
-      speed = Math.min(MAX_SPEED, speed + ACCEL * dt);
+      speed = Math.min(story ? story.def.max : MAX_SPEED, speed + ACCEL * dt);
       for (const k in pw) if (pw[k] > 0) pw[k] = Math.max(0, pw[k] - dt);
       if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
       if (abilityT > 0) abilityT = Math.max(0, abilityT - dt);
@@ -2087,12 +2837,17 @@ kbd {
     if (playing) {
       dist += dz;
       score += dz * (pw.double > 0 ? 2 : 1);
-      const lvl = Math.floor(dist / ZONE_LEN);
+      const lvl = story ? 0 : Math.floor(dist / ZONE_LEN);
       if (lvl !== zoneLevel) {
         zoneLevel = lvl; zoneIdx = lvl % ZONES.length;
         showBanner(`Bölge ${zoneLevel + 1}${ZONES[zoneIdx].lowGravity ? ' · düşük yerçekimi' : ''}`, ZONES[zoneIdx].name, ZONES[zoneIdx].css); sfx.zone();
       }
-      if (!boss && bossDoneLevel !== zoneLevel && dist - zoneLevel * ZONE_LEN >= BOSS_AT) startBoss();
+      if (story) {
+        const d = story.def;
+        if (d.bossAt && !boss && bossDoneLevel < 0 && dist >= d.bossAt) startBoss(d.final ? { time: d.bossTime, big: true } : {});
+        if (d.len && !finishSpawned && dist >= d.len + SPAWN_Z) { addEntity('finish', 1, dist - d.len); finishSpawned = true; }
+        if (d.len && dist >= d.len) winLevel();
+      } else if (!boss && bossDoneLevel !== zoneLevel && dist - zoneLevel * ZONE_LEN >= BOSS_AT) startBoss();
       if (boss) updateBoss(dt);
     }
     blendZone(ZONES[zoneIdx], Math.min(1, dt * 1.2));
@@ -2151,7 +2906,7 @@ kbd {
       camera.updateProjectionMatrix();
     }
 
-    if (playing && dist >= nextSpawnAt) {
+    if (playing && dist >= nextSpawnAt && !(story && story.def.len && dist > story.def.len + SPAWN_Z - 10)) {
       const kind = spawnRow();
       if (kind !== 'ramp' && kind !== 'long') nextSpawnAt = dist + rand(0.9, 1.3) * (11 + speed * 0.5);
     }
@@ -2244,11 +2999,13 @@ kbd {
     camera.position.z = 7;
     if (shake > 0) {
       shake -= dt;
-      camera.position.x += (Math.random() - 0.5) * shake;
-      camera.position.y += (Math.random() - 0.5) * shake;
+      camera.position.x += (Math.random() - 0.5) * shake * settings.shake;
+      camera.position.y += (Math.random() - 0.5) * shake * settings.shake;
     }
     tmp.set(camera.position.x * 0.4, lookY, -9);
     camera.lookAt(tmp);
+    updateSpeedLines(dt, dz);
+    updateOpponents(dt);
 
     if (playing) {
       run.dist = dist; run.crystals = crystals; run.zone = zoneLevel + 1;
@@ -2256,7 +3013,20 @@ kbd {
       checkProgress();
 
       ui.score.textContent = Math.floor(score);
-      ui.distLine.textContent = `${daily ? 'Günlük · ' : ''}${Math.floor(dist)} m · ${ZONES[zoneIdx].name}`;
+      if (story) {
+        const d = story.def;
+        ui.distLine.textContent = `Bölüm ${story.idx + 1} · ${ZONES[zoneIdx].name}`;
+        ui.storyLabel.textContent = d.len ? `${Math.floor(dist)} / ${d.len} m · ★★ ${d.n2} · ★★★ ${d.n3}` : `Büyük Gözcü'yü atlat · ★★ ${d.n2} · ★★★ ${d.n3}`;
+        ui.storyFill.style.width = `${d.len ? Math.min(100, dist / d.len * 100) : (boss ? (1 - boss.life / boss.maxLife) * 100 : 0)}%`;
+      } else {
+        ui.distLine.textContent = `${daily ? 'Günlük · ' : raceMode ? 'Yarış · ' : ''}${Math.floor(dist)} m · ${ZONES[zoneIdx].name}`;
+      }
+      if (raceMode) {
+        mp.sendT -= dt;
+        if (mp.sendT <= 0) { mp.sendT = 0.1; sendRacePresence(false); }
+        mp.listT -= dt;
+        if (mp.listT <= 0) { mp.listT = 0.3; renderRaceList(); }
+      }
       ui.crystals.textContent = crystals;
       ui.speed.textContent = `${Math.round(speed * timeScale)} m/s`;
       const showCombo = combo >= 2;
@@ -2279,17 +3049,21 @@ kbd {
 
   // ---------- Boot ----------
   applySkin(skin);
+  applySettings();
   setMusic(musicOn);
   renderMenu();
   setGhost(ghostOn);
   selectTab(store.get('kehribar-tab', 'play'));
+  onSyncedWrite = markDirty;
+  initCloud();
+  initRoom();
 
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     update(dt);
-    renderer.render(scene, camera);
+    if (bloomOn()) composer.render(); else renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -2305,7 +3079,10 @@ kbd {
     addBank(n) { addBank(n); renderMenu(); },
     fork: () => spawnFork(), bridge: () => spawnBridge(), special: k => spawnSpecial(k),
     charge() { energy = 100; }, useAbility, setSkin(id) { skin = id; applySkin(id); },
-    get falling() { return falling; }, get energy() { return energy; }, get ghost() { return !!ghostData; }
+    get falling() { return falling; }, get energy() { return energy; }, get ghost() { return !!ghostData; },
+    story: i => startRun('story', { idx: i }), winLevel, setStars(i, n) { storyStars[i] = n; store.set('kehribar-story', storyStars); renderMenu(); },
+    race: seed => startRun('race', { seed }), get bloom() { return bloomOn(); }, settings: () => settings,
+    get won() { return state === 'won'; }
   };
 })();
 </script>

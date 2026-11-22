@@ -82,3 +82,15 @@ Haritası tarihe göre belirlenir, gün boyunca herkes aynı diziyle koşar. Gü
 Oyun içinde üretilen, hızla birlikte temposu artan müzik. `M` tuşu ya da menüdeki düğmeyle aç/kapat.
 
 Puan = mesafe + kristal puanları (kombo ve 2x dahil). Rekor, kasa ve toplar tarayıcıda saklanır.
+
+## Hikaye modu
+10 bölüm, her birinin bitiş çizgisi ve kristal hedefleri var: bitirmek ★, ikinci hedef ★★, üçüncü hedef ★★★. Her yeni yıldız kasaya 15 kristal ekler; bir bölümü bitirmek sonrakini açar. 7. bölümde Gözcü, 10. bölümde Büyük Gözcü (24 sn, hızlanan ateş) var.
+
+## Ayarlar
+Grafik kalitesi (Düşük / Orta / Yüksek), parlama (bloom) efekti, hız çizgileri, ekran sarsıntısı, ana ses / müzik / efekt seviyeleri ve renk körlüğü modu (Okabe-Ito paletiyle engel renkleri).
+
+## Hesaba kayıt
+claude.ai'de açıldığında ilerleme (kasa, toplar, başarımlar, yıldızlar, istatistikler, ayarlar) oturum açan kişinin Claude hesabına da kaydedilir ve başka cihazda aynı hesapla açınca geri yüklenir. Google/Gmail girişi sayfa içinde desteklenmez. Yerel dosya olarak açıldığında yalnızca tarayıcıda saklanır.
+
+## Çok oyunculu
+claude.ai'de, sayfaya erişimi olan oturum açmış kişiler bir yarış odası açar ya da koda katılır. "Yarışı başlat" ile herkese aynı tohum gönderilir, 3 sn geri sayımdan sonra herkes aynı engel dizisinde koşar. Rakipler pistte isimleriyle görünür, sağ üstte canlı sıralama, sonunda en yüksek puan kazanır.
