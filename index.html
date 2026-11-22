@@ -417,6 +417,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
 
     <div class="tabs" role="tablist" aria-label="Menü">
       <button class="tab" role="tab" type="button" id="tab-play" data-tab="play" aria-selected="true" aria-controls="panel-play">Oyna</button>
+      <button class="tab" role="tab" type="button" id="tab-modes" data-tab="modes" aria-selected="false" aria-controls="panel-modes">Modlar</button>
       <button class="tab" role="tab" type="button" id="tab-skins" data-tab="skins" aria-selected="false" aria-controls="panel-skins">Toplar</button>
       <button class="tab" role="tab" type="button" id="tab-missions" data-tab="missions" aria-selected="false" aria-controls="panel-missions">Görevler</button>
       <button class="tab" role="tab" type="button" id="tab-upgrades" data-tab="upgrades" aria-selected="false" aria-controls="panel-upgrades">Yükselt</button>
@@ -424,7 +425,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     </div>
 
     <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
-      <p>Yedi bölge, her bölgenin sonunda bir Gözcü. Yol bazen ikiye ayrılır: riskli taraf kristal dolu, güvenli taraf sakin. Kristaller topunun yeteneğini doldurur; rekor hayaletin de yanında koşar.</p>
+      <p>Yedi bölge, her bölgenin sonunda bir Gözcü. Yol virajlara girer, U dönüşü yapar, hatta tavana çıkar; kamera topla birlikte döner. Yol bazen ikiye ayrılır. Kristaller topunun yeteneğini doldurur, rekor hayaletin yanında koşar.</p>
       <div class="keys desk-only">
         <span><kbd>←</kbd> <kbd>→</kbd></span><span>Şerit değiştir (A / D)</span>
         <span><kbd>↑</kbd> <kbd>Boşluk</kbd></span><span>Zıpla (W)</span>
@@ -454,6 +455,11 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
         <button class="ghost settings-open" type="button">Ayarlar</button>
       </div>
       <p class="eyebrow" id="bestLine">En iyi puan: 0</p>
+    </section>
+
+    <section class="panel" id="panel-modes" role="tabpanel" aria-labelledby="tab-modes" hidden>
+      <p>Farklı kurallarla koş. Yol her modda virajlara, U dönüşlerine ve ters dönüşlere girebilir; Ayarlar'dan kapatabilirsin.</p>
+      <div class="levels" id="modeGrid"></div>
     </section>
 
     <section class="panel" id="panel-skins" role="tabpanel" aria-labelledby="tab-skins" hidden>
@@ -561,6 +567,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     <label class="setting" for="setLines"><span>Hız çizgileri</span><input type="checkbox" id="setLines"></label>
     <div class="setting"><span>Ekran sarsıntısı</span>
       <div class="seg" id="setShake"><button type="button" data-v="0">Kapalı</button><button type="button" data-v="0.5">Az</button><button type="button" data-v="1">Normal</button></div></div>
+    <div class="setting"><span>Virajlar ve ters dönüşler<small>Yeni koşuda geçerli olur. Baş dönmesi için kapatabilirsin.</small></span>
+      <div class="seg" id="setCurves"><button type="button" data-v="off">Kapalı</button><button type="button" data-v="turns">Viraj</button><button type="button" data-v="full">Tam</button></div></div>
     <label class="setting" for="setVol"><span>Ana ses</span><input type="range" id="setVol" min="0" max="100" step="5"></label>
     <label class="setting" for="setMusicVol"><span>Müzik</span><input type="range" id="setMusicVol" min="0" max="100" step="5"></label>
     <label class="setting" for="setSfxVol"><span>Efektler</span><input type="range" id="setSfxVol" min="0" max="100" step="5"></label>
@@ -712,7 +720,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   const $ = id => document.getElementById(id);
   // Progress keys mirrored to the viewer's Claude account when cloud save is available
   const SYNCED = new Set(['kehribar-best', 'kehribar-bank', 'kehribar-owned', 'kehribar-skin', 'kehribar-ach', 'kehribar-upgrades',
-    'kehribar-missions', 'kehribar-daily', 'kehribar-stats', 'kehribar-story', 'kehribar-settings', 'kehribar-music', 'kehribar-ghost-on']);
+    'kehribar-missions', 'kehribar-daily', 'kehribar-stats', 'kehribar-story', 'kehribar-settings', 'kehribar-music', 'kehribar-ghost-on', 'kehribar-modes']);
   let onSyncedWrite = null;
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -722,7 +730,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     }
   };
   const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  const DEFAULT_SETTINGS = { quality: isTouch ? 'mid' : 'high', bloom: true, lines: true, shake: 1, vol: 80, music: 70, sfx: 90, cvd: false };
+  const DEFAULT_SETTINGS = { quality: isTouch ? 'mid' : 'high', bloom: true, lines: true, shake: 1, vol: 80, music: 70, sfx: 90, cvd: false, curves: 'full' };
   let settings = Object.assign({}, DEFAULT_SETTINGS, store.get('kehribar-settings', {}));
 
   // ---------- Random: Math.random normally, seeded by date in the daily challenge ----------
@@ -824,15 +832,174 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     g.fillStyle = '#ffb347'; g.fillRect(0, 0, 4, h); g.fillRect(w - 4, 0, 4, h);
   });
 
+  // ---------- Winding path: turns, U-turns and barrel rolls ----------
+  // The game itself runs in a straight "track space" (x = lane, y = height, z = -distance ahead).
+  // A vertex shader bends that space along a path (yaw + roll) and the camera rides the same path,
+  // so turns, hairpins and upside-down sections feel like a first-person ride.
+  const PATH_N = 64, PATH_STEP = 3, PATH_D0 = -24, PATH_BALL = Math.round(-PATH_D0 / PATH_STEP);
+  const pathVecs = Array.from({ length: PATH_N }, () => new THREE.Vector4());
+  const bendUniforms = { uPath: { value: pathVecs }, uPathInfo: { value: new THREE.Vector3(PATH_D0, 1 / PATH_STEP, PATH_N - 1) } };
+  const path = { x: [0], z: [0], yaw: [0], roll: [0], seg: null, mode: 'off', zen: false, rng: Math.random, inv: false, invSince: 0, events: [] };
+  const ballWorld = { x: 0, z: 0 };
+  const camLocal = new THREE.Vector3(0, 4, 7);
+  const CURVE_RANK = { off: 0, turns: 1, full: 2 };
+  const _pa = [0, 0, 0, 0], _p0 = [0, 0, 0, 0];
+
+  function resetPath(mode, seed, zen) {
+    path.mode = mode; path.zen = !!zen; path.inv = false; path.invSince = 0; path.events = [];
+    path.rng = seed != null ? mulberry32((seed ^ 0x5bd1e995) >>> 0) : Math.random;
+    path.x = [0]; path.z = [0]; path.yaw = [0]; path.roll = [0];
+    path.seg = { s0: 0, len: mode === 'off' ? 1e9 : zen ? 90 : 220, dyaw: 0, droll: 0, yaw0: 0, roll0: 0, feature: false };
+  }
+  function nextPathSegment(s) {
+    const P = path, r = P.rng, i = Math.floor(s);
+    const seg = { s0: s, len: 0, dyaw: 0, droll: 0, yaw0: P.yaw[i], roll0: P.roll[i], feature: false };
+    if (P.seg.feature) {                                   // straight stretch between two features
+      seg.len = (P.zen ? 55 : Math.max(70, 190 - s * 0.03)) * (0.7 + r() * 0.6);
+      return seg;
+    }
+    seg.feature = true;
+    const sign = r() < 0.5 ? -1 : 1, full = P.mode === 'full', pick = r();
+    let label = 'Viraj', color = 'var(--amber)';
+    if (full && P.inv && s - P.invSince > 150 + r() * 150) {
+      seg.droll = Math.PI * sign; seg.len = 200; P.inv = false;
+      label = 'Yola dönüş'; color = 'var(--shield)';
+    } else if (full && !P.inv && s > 450 && pick < (P.zen ? 0.4 : 0.28)) {
+      seg.droll = Math.PI * sign; seg.len = 200; P.inv = true; P.invSince = s + seg.len;
+      label = 'Ters dönüş'; color = 'var(--coral)';
+    } else if (full && s > 1200 && pick < (P.zen ? 0.62 : 0.38)) {
+      seg.droll = Math.PI * 2 * sign; seg.dyaw = (0.3 + r() * 0.6) * -sign; seg.len = 400;
+      label = 'Burgu'; color = 'var(--coral)';
+    } else if (s > 1000 && r() < (P.zen ? 0.3 : 0.16)) {
+      seg.dyaw = Math.PI * sign; seg.len = 340;
+      label = 'U dönüşü';
+    } else {
+      const deg = 35 + r() * 55;
+      seg.dyaw = deg * Math.PI / 180 * sign; seg.len = Math.max(110, deg * 2);
+      label = seg.dyaw > 0 ? 'Sol viraj' : 'Sağ viraj';
+    }
+    P.events.push({ s, label, text: label === 'Ters dönüş' ? 'Yol tavana çıkıyor, ekran dönecek' : label === 'Burgu' ? 'Yol tam tur dönüyor'
+      : label === 'Yola dönüş' ? 'Yol eski haline dönüyor' : label === 'U dönüşü' ? 'Geri dönen bir viraj geliyor' : 'Önde viraj var', color });
+    return seg;
+  }
+  function extendPath(toS) {
+    const P = path;
+    while (P.x.length - 1 < toS) {
+      const i = P.x.length - 1, sNext = i + 1;
+      let g = P.seg;
+      if (sNext > g.s0 + g.len) g = P.seg = nextPathSegment(i);
+      const t = Math.min(1, (sNext - g.s0) / g.len), e = t * t * (3 - 2 * t);
+      const yaw = g.yaw0 + g.dyaw * e, roll = g.roll0 + g.droll * e, ym = (P.yaw[i] + yaw) / 2;
+      P.x.push(P.x[i] - Math.sin(ym)); P.z.push(P.z[i] - Math.cos(ym));
+      P.yaw.push(yaw); P.roll.push(roll);
+    }
+  }
+  function pathAt(sv, o) {
+    if (sv <= 0) { o[0] = 0; o[1] = -sv; o[2] = 0; o[3] = 0; return o; }
+    extendPath(Math.ceil(sv) + 2);
+    const i = Math.floor(sv), f = sv - i, P = path;
+    o[0] = P.x[i] + (P.x[i + 1] - P.x[i]) * f; o[1] = P.z[i] + (P.z[i + 1] - P.z[i]) * f;
+    o[2] = P.yaw[i] + (P.yaw[i + 1] - P.yaw[i]) * f; o[3] = P.roll[i] + (P.roll[i + 1] - P.roll[i]) * f;
+    return o;
+  }
+  // Samples of the path around the ball, relative to the ball: what the shader reads each frame
+  function updatePathTable() {
+    pathAt(dist, _p0);
+    ballWorld.x = _p0[0]; ballWorld.z = _p0[1];
+    for (let i = 0; i < PATH_N; i++) {
+      pathAt(dist + PATH_D0 + i * PATH_STEP, _pa);
+      pathVecs[i].set(_pa[0] - _p0[0], _pa[1] - _p0[1], _pa[2], _pa[3]);
+    }
+  }
+  // Same maths as bendPos() in the shader, for the camera and lights
+  function bendInto(x, y, z, out) {
+    let t = (-z - PATH_D0) / PATH_STEP, ext = 0;
+    const tmax = PATH_N - 1;
+    if (t < 0) { ext = t * PATH_STEP; t = 0; } else if (t > tmax) { ext = (t - tmax) * PATH_STEP; t = tmax; }
+    const i = Math.min(Math.floor(t), tmax - 1), f = t - i, a = pathVecs[i], b = pathVecs[i + 1];
+    const bx = a.x + (b.x - a.x) * f, bz = a.y + (b.y - a.y) * f, yaw = a.z + (b.z - a.z) * f, roll = a.w + (b.w - a.w) * f;
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cr = Math.cos(roll), sr = Math.sin(roll);
+    out.set(bx - sy * ext + cy * cr * x - cy * sr * y, sr * x + cr * y, bz - cy * ext - sy * cr * x + sy * sr * y);
+    return out;
+  }
+
+  const BEND_GLSL = `
+#define PATH_N ${PATH_N}
+uniform vec4 uPath[PATH_N];
+uniform vec3 uPathInfo;
+void bendFrame(float d, out vec3 base, out vec3 fwd, out vec3 rr, out vec3 uu) {
+  float t = (d - uPathInfo.x) * uPathInfo.y;
+  float ext = 0.0;
+  float tmax = uPathInfo.z;
+  if (t < 0.0) { ext = t / uPathInfo.y; t = 0.0; }
+  else if (t > tmax) { ext = (t - tmax) / uPathInfo.y; t = tmax; }
+  float fi = floor(min(t, tmax - 0.001));
+  int i = int(fi);
+  vec4 s = mix(uPath[i], uPath[i + 1], t - fi);
+  float cy = cos(s.z), sy = sin(s.z), cr = cos(s.w), sr = sin(s.w);
+  fwd = vec3(-sy, 0.0, -cy);
+  vec3 right = vec3(cy, 0.0, -sy);
+  rr = right * cr + vec3(0.0, sr, 0.0);
+  uu = vec3(0.0, cr, 0.0) - right * sr;
+  base = vec3(s.x, 0.0, s.y) + fwd * ext;
+}
+vec3 bendPos(vec3 p) {
+  vec3 b, f, r, u;
+  bendFrame(-p.z, b, f, r, u);
+  return b + r * p.x + u * p.y;
+}
+vec3 bendDir(vec3 n, float d) {
+  vec3 b, f, r, u;
+  bendFrame(d, b, f, r, u);
+  return r * n.x + u * n.y - f * n.z;
+}
+`;
+  function bendShader(shader) {
+    shader.uniforms.uPath = bendUniforms.uPath;
+    shader.uniforms.uPathInfo = bendUniforms.uPathInfo;
+    let v = shader.vertexShader.replace('#include <common>', '#include <common>\n' + BEND_GLSL);
+    if (v.includes('#include <project_vertex>')) {
+      v = v.replace('#include <project_vertex>', `
+        vec4 mvPosition = vec4( transformed, 1.0 );
+        vec4 bentW = modelMatrix * mvPosition;
+        bentW.xyz = bendPos( bentW.xyz );
+        mvPosition = viewMatrix * bentW;
+        gl_Position = projectionMatrix * mvPosition;`);
+    } else {
+      v = v.replace('vec4 mvPosition = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );',
+        'vec4 mvPosition = viewMatrix * vec4( bendPos( ( modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz ), 1.0 );');
+    }
+    if (v.includes('#include <defaultnormal_vertex>')) {
+      v = v.replace('#include <defaultnormal_vertex>', `#include <defaultnormal_vertex>
+        {
+          vec3 bendW = ( vec4( transformedNormal, 0.0 ) * viewMatrix ).xyz;
+          bendW = bendDir( bendW, -( modelMatrix * vec4( position, 1.0 ) ).z );
+          transformedNormal = ( viewMatrix * vec4( bendW, 0.0 ) ).xyz;
+        }`);
+    }
+    shader.vertexShader = v;
+  }
+  function patchScene() {
+    scene.traverse(o => {
+      const m = o.material;
+      if (!m || Array.isArray(m) || m.userData.noBend) return;
+      o.frustumCulled = false;
+      if (m.userData.bent) return;
+      m.userData.bent = true;
+      m.onBeforeCompile = bendShader;
+      m.needsUpdate = true;
+    });
+  }
+
   // ---------- World ----------
   const trackMat = new THREE.MeshStandardMaterial({ color: ZONES[0].base, emissive: ZONES[0].base, emissiveIntensity: 0.6, roughness: 0.6 });
-  const track = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 400), trackMat);
+  const track = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 400, 1, 134), trackMat);
   track.rotation.x = -Math.PI / 2;
   track.position.set(0, 0, -150);
   scene.add(track);
 
   const lineMat = new THREE.MeshBasicMaterial({ map: lineTex, color: ZONES[0].line, transparent: true, depthWrite: false });
-  const lines = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 400), lineMat);
+  const lines = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 400, 1, 134), lineMat);
   lines.rotation.x = -Math.PI / 2;
   lines.position.set(0, 0.01, -150);
   scene.add(lines);
@@ -840,7 +1007,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   const gridMat = new THREE.MeshBasicMaterial({ map: gridTex, color: ZONES[0].grid, transparent: true, opacity: 0.35, depthWrite: false });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), gridMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(0, -0.02, -150);
+  ground.position.set(0, -0.02, 0);
   scene.add(ground);
 
   const sunMat = new THREE.MeshBasicMaterial({ map: sunTex, color: ZONES[0].sun, transparent: true, fog: false });
@@ -848,17 +1015,30 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   sun.position.set(0, 16, -240);
   scene.add(sun);
 
-  const ridgeMat = new THREE.MeshStandardMaterial({ color: ZONES[0].ridge, flatShading: true, roughness: 1 });
-  const ridgeEdge = new THREE.LineBasicMaterial({ color: ZONES[0].edge, transparent: true, opacity: 0.25 });
-  for (let i = 0; i < 14; i++) {
-    const side = i % 2 ? 1 : -1;
-    const hgt = 14 + Math.random() * 22;
+  // Sky, sun, mountains and the ground grid stay fixed in the world while the road winds through it
+  const ridgeMat = new THREE.MeshStandardMaterial({ color: ZONES[0].ridge, flatShading: true, roughness: 1, fog: false });
+  const ridgeEdge = new THREE.LineBasicMaterial({ color: ZONES[0].edge, transparent: true, opacity: 0.25, fog: false });
+  for (const m of [ridgeMat, ridgeEdge, sunMat, gridMat]) m.userData.noBend = true;
+  const ridgeGroup = new THREE.Group();
+  scene.add(ridgeGroup);
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + Math.random() * 0.2;
+    const rad = 185 + Math.random() * 40;
+    const hgt = 14 + Math.random() * 24;
     const geo = new THREE.ConeGeometry(10 + Math.random() * 10, hgt, 5);
     const m = new THREE.Mesh(geo, ridgeMat);
-    m.position.set(side * (40 + Math.random() * 60), hgt / 2 - 1, -140 - Math.random() * 90);
+    m.position.set(Math.sin(a) * rad, hgt / 2 - 1, -Math.cos(a) * rad);
     m.rotation.y = Math.random() * Math.PI;
     m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), ridgeEdge));
-    scene.add(m);
+    ridgeGroup.add(m);
+  }
+  const SUN_DIR = new THREE.Vector3(0, 0.05, -1).normalize();
+  function updateWorldFixed() {
+    sun.position.copy(camera.position).addScaledVector(SUN_DIR, 255);
+    sun.lookAt(camera.position);
+    ridgeGroup.position.set(camera.position.x, 0, camera.position.z);
+    ground.position.set(Math.round(ballWorld.x / 10) * 10 - ballWorld.x, -0.02, Math.round(ballWorld.z / 5) * 5 - ballWorld.z);
+    gridMat.opacity = 0.35 * Math.max(0, Math.min(1, Math.cos(pathVecs[PATH_BALL].w) * 1.6));   // fades while the road is upside down
   }
 
   const pylons = [];
@@ -1113,7 +1293,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     beam: new THREE.BoxGeometry(8, 0.3, 0.3),
     ramp: new THREE.BoxGeometry(1.9, 0.14, Math.hypot(RAMP_LEN, RAMP_H)),
     rampSide: new THREE.BoxGeometry(0.08, 0.08, Math.hypot(RAMP_LEN, RAMP_H)),
-    tele: new THREE.PlaneGeometry(2.1, 44),
+    tele: new THREE.PlaneGeometry(2.1, 44, 1, 15),
     spark: new THREE.TetrahedronGeometry(0.09),
     sign: new THREE.PlaneGeometry(4.6, 1.15),
     gapEdge: new THREE.BoxGeometry(2.4, 0.05, 0.14),
@@ -1229,8 +1409,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       // Long wall down the middle lane that splits the road in two
       const len = opts.len;
       mesh = new THREE.Group();
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, len), MAT.divider); wall.position.y = 1.1; mesh.add(wall);
-      const top = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.08, len), MAT.dividerTop); top.position.y = 2.24; mesh.add(top);
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, len, 1, 1, Math.ceil(len / 3)), MAT.divider); wall.position.y = 1.1; mesh.add(wall);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.08, len, 1, 1, Math.ceil(len / 3)), MAT.dividerTop); top.position.y = 2.24; mesh.add(top);
       mesh.position.set(0, 0, z - len / 2);
       e.box = { w: 1.5, d: len, y0: 0, y1: 2.2 }; e.len = len;
     } else if (kind === 'sign') {
@@ -1238,21 +1418,21 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       mesh.position.set(0, 3.6, z);
     } else if (kind === 'strip') {
       const len = opts.len;
-      mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.2, len), new THREE.MeshBasicMaterial({ color: opts.color, transparent: true, opacity: 0.16, depthWrite: false }));
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.2, len, 1, Math.ceil(len / 3)), new THREE.MeshBasicMaterial({ color: opts.color, transparent: true, opacity: 0.16, depthWrite: false }));
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(x, 0.015, z - len / 2);
       e.len = len;
     } else if (kind === 'gap') {
       const len = opts.len;
       mesh = new THREE.Group();
-      const hole = new THREE.Mesh(new THREE.PlaneGeometry(2.4, len), MAT.gap); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.025; mesh.add(hole);
+      const hole = new THREE.Mesh(new THREE.PlaneGeometry(2.4, len, 1, Math.ceil(len / 3)), MAT.gap); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.025; mesh.add(hole);
       for (const s of [-1, 1]) { const ed = new THREE.Mesh(GEO.gapEdge, MAT.gapEdge); ed.position.set(0, 0.03, s * len / 2); mesh.add(ed); }
       mesh.position.set(x, 0, z - len / 2);
       e.len = len; e.gap = true;
     } else if (kind === 'rails') {
       const len = opts.len;
       mesh = new THREE.Group();
-      for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, len), MAT.rail); r.position.set(s * 1.1, 0.07, 0); mesh.add(r); }
+      for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, len, 1, 1, Math.ceil(len / 3)), MAT.rail); r.position.set(s * 1.1, 0.07, 0); mesh.add(r); }
       mesh.position.set(x, 0, z - len / 2);
       e.len = len;
     } else if (kind === 'tornado') {
@@ -1455,13 +1635,14 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   let state = 'menu';            // menu | play | paused | over
   let speed = 9, dist = 0, score = 0, crystals = 0, nextSpawnAt = 0, clock = 0;
   let lane = 1, px = 0, py = 0, vy = 0, grounded = true, flying = false, duckT = 0, shield = false;
-  let shake = 0, camY = 4, lookY = 0.4;
+  let shake = 0, camY = 4, lookY = 0.4, camX = 0;
   let zoneLevel = 0, zoneIdx = 0;
   let combo = 0, comboT = 0;
   let daily = false;
   let boss = null, bossDoneLevel = -1;
   let timeScale = 1, falling = false;
   let story = null, raceMode = false, finishSpawned = false, lastMode = 'normal', lastOpts = {};
+  let modeKey = 'normal', mut = null, speedCap = MAX_SPEED, accelRate = ACCEL, scoreMul = 1, modeTime = 0;
   let energy = 0, abilityT = 0, abilityMax = 1, abilityKind = null, invulnT = 0;
   const pw = { magnet: 0, double: 0, slow: 0 };
   const pwMax = { magnet: 1, double: 1, slow: 1 };
@@ -1644,7 +1825,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     const d = new Date();
     ui.dailyInfo.textContent = `${d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} · bugünkü en iyi: ${dailyRec.best}` +
       (dailyRec.rewarded ? '' : ' · 500 m koş: +40 kristal');
-    renderSkins(); renderMissions(ui.missionList, false); renderAchievements(); renderUpgrades(); renderStats(); renderPlayInfo();
+    renderSkins(); renderMissions(ui.missionList, false); renderAchievements(); renderUpgrades(); renderStats(); renderPlayInfo(); renderModes();
   }
   function selectTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
@@ -1687,25 +1868,39 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     initAudio();
     if (audio && audio.state === 'suspended') audio.resume();
     resetRunState();
-    lastMode = mode; lastOpts = opts;
+    lastMode = mode; lastOpts = opts; modeKey = mode;
     daily = mode === 'daily'; run.daily = daily;
     story = mode === 'story' ? { idx: opts.idx, def: LEVELS[opts.idx] } : null;
     raceMode = mode === 'race';
-    ghostData = story || raceMode ? null : loadGhost();
-    rng = daily ? mulberry32(Number(todayKey())) : story ? mulberry32(story.def.seed)
-        : raceMode ? mulberry32(opts.seed >>> 0) : Math.random;
-    speed = story ? story.def.speed : START_SPEED;
+    mut = mode === 'weekly' ? MUTATORS[weekId() % MUTATORS.length].id : null;
+    const seed = daily ? Number(todayKey()) : story ? story.def.seed : raceMode ? (opts.seed >>> 0)
+      : mode === 'weekly' ? weekId() * 7919 + 17 : null;
+    ghostData = mode === 'normal' || mode === 'daily' ? loadGhost() : null;
+    rng = seed != null ? mulberry32(seed) : Math.random;
+    speedCap = MAX_SPEED; accelRate = ACCEL; scoreMul = 1; modeTime = 0;
+    let startSpeed = START_SPEED;
+    if (story) { startSpeed = story.def.speed; speedCap = story.def.max; }
+    else if (mode === 'rush') { startSpeed = 24; speedCap = 50; accelRate = 1.0; scoreMul = 2; }
+    else if (mode === 'zen') { startSpeed = 15; speedCap = 26; accelRate = 0.3; modeTime = 150; }
+    else if (mode === 'time') modeTime = 60;
+    scene.fog.near = mut === 'dark' ? 6 : 35; scene.fog.far = mut === 'dark' ? 55 : 120;
+    resetPath(pathModeFor(), seed, mode === 'zen');
+    speed = startSpeed;
     finishSpawned = false;
     if (story) { zoneIdx = story.def.zone; blendZone(ZONES[zoneIdx], 1); }
-    shield = upgrades.shield > 0;
+    shield = upgrades.shield > 0 && mode !== 'rush';
     state = 'play';
     hideOverlays();
     ui.hud.hidden = false; ui.pauseBtn.hidden = false; ui.powers.hidden = false; ui.abilityBtn.hidden = false;
-    ui.storybar.hidden = !story; ui.raceList.hidden = !raceMode;
+    ui.storybar.hidden = !(story || mode === 'time' || mode === 'zen'); ui.raceList.hidden = !raceMode;
     for (let i = 0; i < 5; i++) addEntity('crystal', 1, -14 - i * 2.2);
     if (story) {
       showBanner(`Bölüm ${story.idx + 1}`, story.def.name, ZONES[zoneIdx].css);
       toast('Hedef', story.def.goal || `★★ ${story.def.n2} kristal · ★★★ ${story.def.n3} kristal`, 'var(--double)');
+    }
+    if (MODES[mode]) {
+      const wm = mut && MUTATORS.find(x => x.id === mut);
+      toast(wm ? `${MODES[mode].name} · ${wm.name}` : MODES[mode].name, wm ? wm.desc : MODES[mode].desc, MODES[mode].color);
     }
     if (raceMode) sendRacePresence(true);
   }
@@ -1720,6 +1915,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     resetRunState();
     state = 'menu';
     rng = Math.random; story = null; raceMode = false;
+    modeKey = 'normal'; mut = null; resetPath('off', null);
+    scene.fog.near = 35; scene.fog.far = 120;
     zoneIdx = 0;
     hideOverlays();
     ui.storybar.hidden = true; ui.raceList.hidden = true;
@@ -1738,16 +1935,19 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   function gameOver(cause) {
     state = 'over';
     if (cause === 'gap') sfx.fall();
+    else if (cause === 'time' || cause === 'zen') sfx.win();
     else { sfx.crash(); shake = 0.6; burst(ball.position.clone(), ballLight.color.getHex(), 30); }
     unlock('first');
     recordStats(cause);
     const final = Math.floor(score);
-    const isBest = final > best;
-    if (!story && !raceMode && ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
+    const counts = modeKey === 'normal' || modeKey === 'daily';
+    const isBest = counts && final > best;
+    if (counts && ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
     if (isBest) { best = final; store.set('kehribar-best', best); }
+    recordModeBest(final);
     addBank(crystals);
     let dailyNote = '';
-    ui.overTitle.textContent = cause === 'gap' ? 'Düştün!' : 'Çarptın!';
+    ui.overTitle.textContent = ({ gap: 'Düştün!', time: 'Süre doldu!', zen: 'Yolculuk bitti' })[cause] || 'Çarptın!';
     ui.ghostLine.hidden = true; ghostGroup.visible = false;
     if (daily) {
       if (final > dailyRec.best) dailyRec.best = final;
@@ -1771,6 +1971,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     ui.pauseBtn.hidden = true; ui.combo.hidden = true; ui.powers.hidden = true; ui.bossbar.hidden = true; ui.abilityBtn.hidden = true;
     ui.storybar.hidden = true;
     if (story) ui.overEyebrow.textContent = `Bölüm ${story.idx + 1} · ${story.def.name}`;
+    if (MODES[modeKey]) ui.overEyebrow.textContent = MODES[modeKey].name + (mut ? ' · ' + MUTATORS.find(x => x.id === mut).name : '');
     if (raceMode) {
       ui.overEyebrow.textContent = 'Yarış · sonuçlar yarış odasında';
       if (mp.race) mp.race.r.presence({ phase: 'dead', d: Math.floor(dist), sc: final }).catch(() => {});
@@ -1825,7 +2026,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     b.mesh.position.z += (-30 - b.mesh.position.z) * Math.min(1, dt * 1.6);
     b.core.rotation.y += dt * 1.5; b.shell.rotation.y -= dt * 0.6; b.shell.rotation.x += dt * 0.3;
     b.rings.forEach((r, i) => { r.rotation.z += dt * (i ? -1.2 : 0.9); });
-    b.eye.lookAt(camera.position);
+    b.eye.lookAt(camLocal);
     if (b.t < 1.6) return;
 
     b.life -= dt;
@@ -1931,7 +2132,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
 
   // ---------- Lifetime statistics ----------
   const DEATH_NAMES = { block: 'Blok', bar: 'Bariyer', wall: 'Duvar', slider: 'Kayan blok', pendulum: 'Sarkaç', orb: 'Gözcü küresi',
-                        gap: 'Uçurum', tornado: 'Kum hortumu', jelly: 'Denizanası', meteor: 'Meteor', divider: 'Ayırıcı duvar' };
+                        gap: 'Uçurum', tornado: 'Kum hortumu', jelly: 'Denizanası', meteor: 'Meteor', divider: 'Ayırıcı duvar', time: 'Süre doldu', zen: 'Yolculuk bitti' };
   let stats = Object.assign({ runs: 0, dist: 0, crystals: 0, jumps: 0, ramps: 0, bosses: 0, abilities: 0, risky: 0, time: 0,
                               bestDist: 0, bestCombo: 0, deaths: {}, skinRuns: {} }, store.get('kehribar-stats', {}));
   function recordStats(cause) {
@@ -1939,7 +2140,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     stats.jumps += run.jumps; stats.ramps += run.ramps; stats.bosses += run.bosses;
     stats.abilities += run.abilities; stats.risky += run.risky; stats.time += runTime;
     stats.bestDist = Math.max(stats.bestDist, Math.floor(dist)); stats.bestCombo = Math.max(stats.bestCombo, run.combo);
-    if (cause) stats.deaths[cause] = (stats.deaths[cause] || 0) + 1;
+    if (cause && cause !== 'time' && cause !== 'zen') stats.deaths[cause] = (stats.deaths[cause] || 0) + 1;
     stats.skinRuns[skin] = (stats.skinRuns[skin] || 0) + 1;
     store.set('kehribar-stats', stats);
   }
@@ -2046,6 +2247,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   const DEFAULT_GEN = { fork: [300, 0.06], bridge: [250, 0.06], special: [0, 0.2], ramp: [200, 0.09], pendulum: [800, 0.07], slider: [400, 0.14] };
   const OFF = [9e9, 0];
   const gen = o => Object.assign({ fork: OFF, bridge: OFF, special: OFF, ramp: OFF, pendulum: OFF, slider: OFF }, o);
+  const ZEN_GEN = gen({ ramp: [0, 0.14] });
   const LEVELS = [
     { name: 'İlk Işık',          zone: 0, len: 600,  seed: 1101, speed: 13, max: 22, n2: 20, n3: 32, gen: gen({ ramp: [150, 0.06] }) },
     { name: 'Rampa Sokağı',      zone: 0, len: 800,  seed: 2203, speed: 14, max: 26, n2: 35, n3: 60, gen: gen({ ramp: [80, 0.25], slider: [300, 0.1] }) },
@@ -2124,6 +2326,54 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     setTimeout(() => { if (state === 'won') { ui.winMenu.hidden = false; (ui.nextLevelBtn.hidden ? $('winLevelsBtn') : ui.nextLevelBtn).focus(); } }, 700);
   }
 
+  // ---------- Extra game modes ----------
+  const MODES = {
+    time:   { name: 'Zamana karşı',      short: 'Zaman', color: '#ff5a5f', desc: '60 saniyen var. Çarpmak 5 sn götürür, her kristal 1,5 sn ekler.' },
+    rush:   { name: 'Hız çılgınlığı',    short: 'Hız',   color: '#ffd23d', desc: '24 m/s ile başla, hız çok çabuk artar. Kalkan yok, puan x2.' },
+    zen:    { name: 'Zen yolculuğu',     short: 'Zen',   color: '#3dffd0', desc: 'Engel yok, ölüm yok. 150 sn boyunca kristal topla, yolun kıvrımlarını izle.' },
+    weekly: { name: 'Haftalık mutasyon', short: 'Hafta', color: '#d27bff', desc: 'Her hafta farklı bir kural. Harita herkes için aynı.' }
+  };
+  const MUTATORS = [
+    { id: 'lowg',  name: 'Ay yürüyüşü',     desc: 'Yerçekimi yarıya iner, zıplamalar çok daha yüksek.' },
+    { id: 'rain',  name: 'Kristal yağmuru', desc: 'Kristal dizileri neredeyse iki kat uzun.' },
+    { id: 'dark',  name: 'Karanlık hat',    desc: 'Görüş mesafesi çok kısa, engeller son anda belirir.' },
+    { id: 'crowd', name: 'Kalabalık yol',   desc: 'Her sırada iki şerit kapalı.' }
+  ];
+  const LEVEL_PATH = ['off', 'off', 'turns', 'turns', 'turns', 'full', 'turns', 'full', 'full', 'turns'];
+  const weekId = () => { const d = new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5 + 3) / 7); };
+  const gravMul = () => (ZONES[zoneIdx].lowGravity ? 0.6 : 1) * (mut === 'lowg' ? 0.5 : 1);
+  function pathModeFor() {
+    const want = story ? (LEVEL_PATH[story.idx] || 'off') : 'full', have = settings.curves || 'full';
+    return CURVE_RANK[have] < CURVE_RANK[want] ? have : want;
+  }
+  let modeRec = Object.assign({ time: 0, rush: 0, zen: 0, weekly: { week: 0, best: 0 } }, store.get('kehribar-modes', {}));
+  function recordModeBest(final) {
+    if (!MODES[modeKey]) return;
+    if (modeKey === 'weekly') {
+      const w = weekId();
+      if (!modeRec.weekly || modeRec.weekly.week !== w) modeRec.weekly = { week: w, best: 0 };
+      if (final > modeRec.weekly.best) modeRec.weekly.best = final;
+    } else if (final > (modeRec[modeKey] || 0)) modeRec[modeKey] = final;
+    store.set('kehribar-modes', modeRec);
+  }
+  function renderModes() {
+    const grid = $('modeGrid'); if (!grid) return;
+    const wk = weekId(), wm = MUTATORS[wk % MUTATORS.length];
+    grid.innerHTML = '';
+    for (const key of Object.keys(MODES)) {
+      const m = MODES[key];
+      const best = key === 'weekly' ? (modeRec.weekly && modeRec.weekly.week === wk ? modeRec.weekly.best : 0) : modeRec[key] || 0;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'level'; b.id = `mode-${key}`; b.style.setProperty('--zc', m.color);
+      const t = document.createElement('b'); t.textContent = m.name;
+      const d = document.createElement('span'); d.className = 'meta'; d.textContent = key === 'weekly' ? `Bu hafta: ${wm.name}. ${wm.desc}` : m.desc;
+      const r = document.createElement('span'); r.className = 'meta'; r.textContent = `En iyi: ${best}`;
+      b.append(t, d, r);
+      b.addEventListener('click', () => startRun(key));
+      grid.append(b);
+    }
+  }
+
   // ---------- Settings, bloom and speed lines ----------
   const OBSTACLE_COLORS = {
     normal: { block: COLORS.coral, bar: COLORS.bar, wall: COLORS.wall, slider: COLORS.slider, orb: COLORS.coral },
@@ -2162,6 +2412,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   function renderSettingsUI() {
     document.querySelectorAll('#setQuality button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings.quality)));
     document.querySelectorAll('#setShake button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.v) === settings.shake)));
+    document.querySelectorAll('#setCurves button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === settings.curves)));
     $('setBloom').checked = settings.bloom; $('setLines').checked = settings.lines; $('setCvd').checked = settings.cvd;
     $('setVol').value = settings.vol; $('setMusicVol').value = settings.music; $('setSfxVol').value = settings.sfx;
     let note = '';
@@ -2184,6 +2435,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   }
   document.querySelectorAll('#setQuality button').forEach(b => b.addEventListener('click', () => { settings.quality = b.dataset.v; saveSettings(); }));
   document.querySelectorAll('#setShake button').forEach(b => b.addEventListener('click', () => { settings.shake = Number(b.dataset.v); saveSettings(); }));
+  document.querySelectorAll('#setCurves button').forEach(b => b.addEventListener('click', () => { settings.curves = b.dataset.v; saveSettings(); }));
   $('setBloom').addEventListener('change', e => { settings.bloom = e.target.checked; saveSettings(); });
   $('setLines').addEventListener('change', e => { settings.lines = e.target.checked; saveSettings(); });
   $('setCvd').addEventListener('change', e => { settings.cvd = e.target.checked; saveSettings(); });
@@ -2235,7 +2487,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     ui.cloudLine.classList.toggle('ok', st === 'saved');
   }
   function snapshotProgress() {
-    return { v: 1, updatedAt: localUpdated, best, bank, owned, skin, achieved, upgrades, missions, dailyRec, stats, storyStars, settings, musicOn, ghostOn };
+    return { v: 1, updatedAt: localUpdated, best, bank, owned, skin, achieved, upgrades, missions, dailyRec, stats, storyStars, settings, musicOn, ghostOn, modeRec };
   }
   function markDirty() {
     localUpdated = Date.now();
@@ -2270,13 +2522,18 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     if (p.dailyRec && p.dailyRec.date === todayKey()) dailyRec = p.dailyRec;
     if (p.stats) stats = Object.assign(stats, p.stats);
     if (p.storyStars) for (const [k, v] of Object.entries(p.storyStars)) storyStars[k] = Math.max(storyStars[k] || 0, v);
+    if (p.modeRec) {
+      for (const k of ['time', 'rush', 'zen']) modeRec[k] = Math.max(modeRec[k] || 0, Number(p.modeRec[k]) || 0);
+      const w = p.modeRec.weekly;
+      if (w && w.week === weekId() && (!modeRec.weekly || modeRec.weekly.week !== w.week || w.best > modeRec.weekly.best)) modeRec.weekly = { week: w.week, best: Number(w.best) || 0 };
+    }
     if (p.settings) settings = Object.assign({}, DEFAULT_SETTINGS, p.settings);
     if (typeof p.musicOn === 'boolean') musicOn = p.musicOn;
     if (typeof p.ghostOn === 'boolean') ghostOn = p.ghostOn;
     store.set('kehribar-best', best); store.set('kehribar-bank', bank); store.set('kehribar-owned', owned);
     store.set('kehribar-skin', skin); store.set('kehribar-ach', achieved); store.set('kehribar-upgrades', upgrades);
     store.set('kehribar-missions', missions); store.set('kehribar-daily', dailyRec); store.set('kehribar-stats', stats);
-    store.set('kehribar-story', storyStars); store.set('kehribar-settings', settings);
+    store.set('kehribar-story', storyStars); store.set('kehribar-settings', settings); store.set('kehribar-modes', modeRec);
     store.set('kehribar-music', musicOn); store.set('kehribar-ghost-on', ghostOn);
     applySkin(skin); applySettings(); setMusic(musicOn); setGhost(ghostOn);
     fillMissions(); renderMenu();
@@ -2628,12 +2885,12 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 
   // ---------- Level generation ----------
-  function crystalLine(l, z, n) { for (let i = 0; i < n; i++) addEntity('crystal', l, z + 5 - i * 2.2); }
+  function crystalLine(l, z, n) { const m = mut === 'rain' ? Math.round(n * 1.8) : n; for (let i = 0; i < m; i++) addEntity('crystal', l, z + 5 - i * 2.2); }
 
   function spawnRow() {
     const z = SPAWN_Z;
     const zone = ZONES[zoneIdx];
-    const difficulty = Math.min(1, dist / 1500);
+    const difficulty = modeKey === 'rush' ? 1 : Math.min(1, dist / 1500);
 
     if (boss) {                                    // keep the road clear while the Sentinel fires
       if (rng() < 0.6) crystalLine(Math.floor(rng() * 3), z, 4);
@@ -2641,7 +2898,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     }
 
     // Event odds: [minimum distance, probability]; story levels bring their own mix
-    const G = story ? story.def.gen : DEFAULT_GEN;
+    const G = story ? story.def.gen : modeKey === 'zen' ? ZEN_GEN : DEFAULT_GEN;
     const ev = rng();
     let acc = G.fork[1];
     if (dist > G.fork[0] && ev < acc) { spawnFork(); return 'long'; }
@@ -2656,7 +2913,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       const l = Math.floor(rng() * 3);
       addEntity('ramp', l, z);
       const v = speed * timeScale;
-      const gG = GLIDE_GRAVITY * (zone.lowGravity ? 0.6 : 1);
+      const gG = GLIDE_GRAVITY * gravMul();
       const air = 2 * RAMP_V / gG;
       for (let t = 0.3; t < air; t += 0.22) {
         const y = RAMP_V * t - 0.5 * gG * t * t;
@@ -2683,7 +2940,16 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       return;
     }
 
-    const count = rng() < 0.25 + difficulty * 0.45 ? 2 : 1;
+    if (modeKey === 'zen') {                          // no obstacles: crystals and pickups only
+      crystalLine(lanes[0], z, 4 + Math.floor(rng() * 4));
+      if (rng() < 0.12) {
+        const options = ['magnet', 'double', 'slow'].filter(k => pw[k] <= 0);
+        if (!shield) options.push('shield');
+        if (options.length) addEntity(pick(options), lanes[1], z - 6);
+      }
+      return;
+    }
+    const count = mut === 'crowd' ? 2 : rng() < 0.25 + difficulty * 0.45 ? 2 : 1;
     const blocked = lanes.slice(0, count);
     const free = lanes.slice(count);
 
@@ -2766,10 +3032,11 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     removeEntity(e);
     if (e.kind === 'crystal') {
       crystals++;
+      if (modeKey === 'time') modeTime = Math.min(99, modeTime + 1.5);
       combo++; comboT = COMBO_WINDOW;
       run.combo = Math.max(run.combo, combo);
       const mult = comboMult();
-      score += 10 * mult * (pw.double > 0 ? 2 : 1) * (abilityT > 0 && abilityKind === 'gold' ? 3 : 1);
+      score += 10 * mult * (pw.double > 0 ? 2 : 1) * (abilityT > 0 && abilityKind === 'gold' ? 3 : 1) * scoreMul;
       addEnergy(ENERGY_PER_CRYSTAL);
       sfx.crystal(combo);
       if (combo % 5 === 0 && combo <= 20) {
@@ -2798,6 +3065,13 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       burst(e.center ? e.center.clone() : e.mesh.position.clone(), COLORS.shield, 22); sfx.block(); shake = 0.3;
       return false;
     }
+    if (modeKey === 'time') {
+      modeTime -= 5; invulnT = 1.6;
+      if (!e.len) removeEntity(e);
+      burst(e.center ? e.center.clone() : e.mesh.position.clone(), COLORS.coral, 20); sfx.block(); shake = 0.35;
+      toast('Çarpma', '−5 sn', 'var(--coral)');
+      return false;
+    }
     gameOver(e.kind);
     return true;
   }
@@ -2807,6 +3081,12 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       shield = false; vy = JUMP_V * 1.1; grounded = false;
       burst(ball.position.clone(), COLORS.shield, 22); sfx.block();
       toast('Kalkan', 'Uçurumdan sekip kurtuldun', 'var(--shield)');
+      return false;
+    }
+    if (modeKey === 'time') {
+      modeTime -= 5; invulnT = 1.6; vy = JUMP_V * 1.1; grounded = false;
+      burst(ball.position.clone(), COLORS.coral, 20); sfx.block(); shake = 0.35;
+      toast('Uçurum', '−5 sn', 'var(--coral)');
       return false;
     }
     falling = true; grounded = false; vy = 0;
@@ -2823,11 +3103,15 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     const moving = state === 'play' || state === 'menu';
 
     if (playing) {
-      speed = Math.min(story ? story.def.max : MAX_SPEED, speed + ACCEL * dt);
+      speed = Math.min(speedCap, speed + accelRate * dt);
       for (const k in pw) if (pw[k] > 0) pw[k] = Math.max(0, pw[k] - dt);
       if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
       if (abilityT > 0) abilityT = Math.max(0, abilityT - dt);
       if (invulnT > 0) invulnT -= dt;
+      if (modeKey === 'time' || modeKey === 'zen') {
+        modeTime -= dt;
+        if (modeTime <= 0) gameOver(modeKey);
+      }
     } else if (state === 'menu') {
       speed = 9;
     }
@@ -2836,7 +3120,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     if (moving) clock += dt * timeScale;
     if (playing) {
       dist += dz;
-      score += dz * (pw.double > 0 ? 2 : 1);
+      score += dz * (pw.double > 0 ? 2 : 1) * scoreMul;
       const lvl = story ? 0 : Math.floor(dist / ZONE_LEN);
       if (lvl !== zoneLevel) {
         zoneLevel = lvl; zoneIdx = lvl % ZONES.length;
@@ -2847,14 +3131,15 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
         if (d.bossAt && !boss && bossDoneLevel < 0 && dist >= d.bossAt) startBoss(d.final ? { time: d.bossTime, big: true } : {});
         if (d.len && !finishSpawned && dist >= d.len + SPAWN_Z) { addEntity('finish', 1, dist - d.len); finishSpawned = true; }
         if (d.len && dist >= d.len) winLevel();
-      } else if (!boss && bossDoneLevel !== zoneLevel && dist - zoneLevel * ZONE_LEN >= BOSS_AT) startBoss();
+      } else if (!boss && modeKey !== 'zen' && bossDoneLevel !== zoneLevel && dist - zoneLevel * ZONE_LEN >= BOSS_AT) startBoss();
       if (boss) updateBoss(dt);
     }
+    updatePathTable();
+    if (playing) while (path.events.length && path.events[0].s - dist < 55) { const ev = path.events.shift(); if (ev.s > dist - 5) toast(ev.label, ev.text, ev.color); }
     blendZone(ZONES[zoneIdx], Math.min(1, dt * 1.2));
     updateFx(state === 'paused' ? 0 : dt, dz, ZONES[zoneIdx]);
 
     lineTex.offset.y += dz / 10;
-    gridTex.offset.y += dz / 5;
     for (const p of pylons) {
       p.position.z += dz;
       if (p.position.z > 12) p.position.z -= PYLON_COUNT * PYLON_GAP;
@@ -2865,7 +3150,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
       px += (LANES[lane] - px) * Math.min(1, dt * 14);
       if (falling) { vy -= GRAVITY * dt; py += vy * dt; }
       else if (!grounded) {
-        vy -= (flying ? GLIDE_GRAVITY : GRAVITY) * (ZONES[zoneIdx].lowGravity ? 0.6 : 1) * dt;
+        vy -= (flying ? GLIDE_GRAVITY : GRAVITY) * gravMul() * dt;
         py += vy * dt;
         if (py <= 0) { py = 0; vy = 0; grounded = true; if (flying) { flying = false; shake = Math.max(shake, 0.15); } }
       }
@@ -2883,7 +3168,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     ball.rotation.z = (LANES[lane] - px) * -0.25;
     ball.visible = state !== 'over' || (falling && py > -10);
     ballCenter.set(px, py + h / 2, 0);
-    ballLight.position.set(px, py + 1.2, 0.5);
+    bendInto(px, py + 1.2, 0.5, ballLight.position);
     shadow.position.x = px;
     const sh = Math.max(0.2, 1 - py / 6);
     shadow.scale.set(sh, sh, sh);
@@ -2994,16 +3279,19 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     const lift = flying ? 0.9 : 0.25;
     camY += (4 + py * lift - camY) * Math.min(1, dt * 6);
     lookY += (0.4 + (flying ? py * 0.4 : 0) - lookY) * Math.min(1, dt * 6);
-    camera.position.x += (px * 0.55 - camera.position.x) * Math.min(1, dt * 5);
-    camera.position.y = camY;
-    camera.position.z = 7;
+    camX += (px * 0.55 - camX) * Math.min(1, dt * 5);
+    camLocal.set(camX, camY, 7);
+    bendInto(camX, camY, 7, camera.position);          // the camera rides the winding path, rolling with it
     if (shake > 0) {
       shake -= dt;
       camera.position.x += (Math.random() - 0.5) * shake * settings.shake;
       camera.position.y += (Math.random() - 0.5) * shake * settings.shake;
     }
-    tmp.set(camera.position.x * 0.4, lookY, -9);
+    bendInto(camX * 0.4, lookY, -9, tmp);
+    const cp = pathVecs[PATH_BALL];
+    camera.up.set(-Math.cos(cp.z) * Math.sin(cp.w), Math.cos(cp.w), Math.sin(cp.z) * Math.sin(cp.w));
     camera.lookAt(tmp);
+    updateWorldFixed();
     updateSpeedLines(dt, dz);
     updateOpponents(dt);
 
@@ -3019,7 +3307,12 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
         ui.storyLabel.textContent = d.len ? `${Math.floor(dist)} / ${d.len} m · ★★ ${d.n2} · ★★★ ${d.n3}` : `Büyük Gözcü'yü atlat · ★★ ${d.n2} · ★★★ ${d.n3}`;
         ui.storyFill.style.width = `${d.len ? Math.min(100, dist / d.len * 100) : (boss ? (1 - boss.life / boss.maxLife) * 100 : 0)}%`;
       } else {
-        ui.distLine.textContent = `${daily ? 'Günlük · ' : raceMode ? 'Yarış · ' : ''}${Math.floor(dist)} m · ${ZONES[zoneIdx].name}`;
+        ui.distLine.textContent = `${daily ? 'Günlük · ' : raceMode ? 'Yarış · ' : MODES[modeKey] ? MODES[modeKey].short + ' · ' : ''}${Math.floor(dist)} m · ${ZONES[zoneIdx].name}`;
+        if (modeKey === 'time' || modeKey === 'zen') {
+          const left = Math.max(0, modeTime);
+          ui.storyLabel.textContent = modeKey === 'time' ? `Kalan süre ${left.toFixed(1)} sn` : `Zen · ${Math.ceil(left)} sn kaldı`;
+          ui.storyFill.style.width = `${Math.min(100, left / (modeKey === 'time' ? 60 : 150) * 100)}%`;
+        }
       }
       if (raceMode) {
         mp.sendT -= dt;
@@ -3048,6 +3341,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   }
 
   // ---------- Boot ----------
+  resetPath('off', null); updatePathTable();
   applySkin(skin);
   applySettings();
   setMusic(musicOn);
@@ -3063,6 +3357,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     update(dt);
+    patchScene();
     if (bloomOn()) composer.render(); else renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
@@ -3082,7 +3377,10 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     get falling() { return falling; }, get energy() { return energy; }, get ghost() { return !!ghostData; },
     story: i => startRun('story', { idx: i }), winLevel, setStars(i, n) { storyStars[i] = n; store.set('kehribar-story', storyStars); renderMenu(); },
     race: seed => startRun('race', { seed }), get bloom() { return bloomOn(); }, settings: () => settings,
-    get won() { return state === 'won'; }
+    get won() { return state === 'won'; },
+    setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
+    get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
+    get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();
 </script>

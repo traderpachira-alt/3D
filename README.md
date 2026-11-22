@@ -94,3 +94,20 @@ claude.ai'de açıldığında ilerleme (kasa, toplar, başarımlar, yıldızlar,
 
 ## Çok oyunculu
 claude.ai'de, sayfaya erişimi olan oturum açmış kişiler bir yarış odası açar ya da koda katılır. "Yarışı başlat" ile herkese aynı tohum gönderilir, 3 sn geri sayımdan sonra herkes aynı engel dizisinde koşar. Rakipler pistte isimleriyle görünür, sağ üstte canlı sıralama, sonunda en yüksek puan kazanır.
+
+## Virajlar, U dönüşleri ve ters dönüşler
+Yol artık düz değil. Oyun mantığı (şeritler, çarpışmalar) düz bir pist uzayında çalışır; bir vertex shader bu pisti yol boyunca büker ve kamera aynı yolu izler. Böylece:
+- **Viraj**: 35–90° sağa ya da sola; kamera topla birlikte döner, güneş ve dağlar dünyaya sabit kalır.
+- **U dönüşü** (1000 m'den sonra): 180° geri dönen viraj.
+- **Ters dönüş** (450 m'den sonra): yol yarım tur dönüp tavana çıkar, ekran tersine döner; bir süre sonra eski haline döner.
+- **Burgu** (1200 m'den sonra): yol tam tur döner ve virajla birleşir.
+Özellik yaklaşmadan önce ekranda uyarı çıkar. Ayarlar'dan "Virajlar ve ters dönüşler" Kapalı / Viraj / Tam seçilebilir (baş dönmesi için). Hikaye modunda ilk iki bölüm düzdür, sonrası kademeli olarak virajlıdır.
+
+## Yeni modlar (Modlar sekmesi)
+| Mod | Kural |
+| --- | --- |
+| Zamana karşı | 60 sn. Çarpmak ve uçuruma düşmek 5 sn götürür, her kristal 1,5 sn ekler. Süre bitince koşu biter. |
+| Hız çılgınlığı | 24 m/s ile başlar, hız çok çabuk artar (en çok 50). Kalkan yok, puan x2, engel yoğunluğu en yüksek. |
+| Zen yolculuğu | Engel ve Gözcü yok, ölüm yok. 150 sn boyunca kristal topla; yol sık sık virajlanır ve ters döner. |
+| Haftalık mutasyon | Haftaya göre değişen kural: Ay yürüyüşü (yarı yerçekimi), Kristal yağmuru, Karanlık hat (kısa görüş), Kalabalık yol (her sırada iki şerit kapalı). Harita herkes için aynıdır. |
+Her mod için en iyi puan saklanır (hesap kaydıyla senkronlanır).
