@@ -187,8 +187,9 @@ kbd {
 .ghost:hover { border-color: var(--mist); }
 .ghost:disabled { opacity: .45; cursor: default; }
 
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid rgba(127, 158, 170, .35); }
+.tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid rgba(127, 158, 170, .35); }
 .tab {
+  flex: 1 1 auto;
   background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
   color: var(--mist-dim); font: 600 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase;
   padding: 10px 4px; cursor: pointer;
@@ -249,6 +250,38 @@ kbd {
 .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-variant-numeric: tabular-nums; }
 .results .value { font-size: 24px; }
 .new-best { color: var(--crystal); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+.ability {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  display: grid; justify-items: center; gap: 5px;
+  min-width: 150px; max-width: calc(100vw - 260px); padding: 8px 14px;
+  background: rgba(7, 26, 38, .7); color: var(--mist);
+  border: 1px solid rgba(127, 158, 170, .4);
+  font: 600 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+}
+.ability .bar { width: 130px; height: 4px; background: rgba(207, 227, 234, .15); }
+.ability .bar i { display: block; height: 100%; background: var(--c, var(--amber)); }
+.ability small { font-size: 10px; color: var(--mist-dim); letter-spacing: .06em; text-transform: none; }
+.ability.ready { border-color: var(--c, var(--amber)); color: var(--c, var(--amber)); box-shadow: 0 0 18px -4px var(--c, var(--amber)); }
+.ability.active { border-color: var(--c, var(--amber)); }
+.flash { position: fixed; inset: 0; pointer-events: none; background: var(--c, #fff); opacity: 0; }
+.flash.go { animation: flash .45s ease-out; }
+@keyframes flash { from { opacity: .5; } to { opacity: 0; } }
+.statgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-variant-numeric: tabular-nums; }
+.statgrid div { padding: 8px 10px; background: rgba(7, 26, 38, .45); display: grid; gap: 2px; min-width: 0; }
+.statgrid b { font-family: var(--font-display); font-size: 20px; color: var(--amber); line-height: 1.1; overflow-wrap: anywhere; }
+.statgrid span { font-size: 11px; color: var(--mist-dim); letter-spacing: .08em; text-transform: uppercase; }
+.causes li { display: grid; grid-template-columns: minmax(90px, 120px) 1fr 32px; gap: 10px; align-items: center; font-size: 12px; }
+.causes li.empty { display: block; color: var(--mist-dim); }
+.causes .bar { height: 6px; background: rgba(207, 227, 234, .12); }
+.causes .bar i { display: block; height: 100%; background: var(--coral); }
+.causes em { font-style: normal; text-align: right; color: var(--mist-dim); font-variant-numeric: tabular-nums; }
+.ghost-label { color: var(--mist); }
+@media (max-width: 640px) {
+  .powers { bottom: calc(env(safe-area-inset-bottom, 0px) + 84px); }
+  .ability { max-width: none; }
+  .ability small { display: none; }
+}
 .touch-only { display: none; }
 @media (hover: none) and (pointer: coarse) {
   .touch-only { display: block; }
@@ -260,7 +293,7 @@ kbd {
 }
 @media (prefers-reduced-motion: reduce) {
   .card { backdrop-filter: none; }
-  .zone-banner.show, .combo.pop strong, .denied, .toast { animation: none; }
+  .zone-banner.show, .combo.pop strong, .denied, .toast, .flash.go { animation: none; }
 }
 </style>
 </head>
@@ -277,6 +310,7 @@ kbd {
     <span class="label">Kristal</span>
     <span class="value crystal" id="crystals">0</span>
     <span class="label" id="speed">14 m/s</span>
+    <span class="label ghost-label" id="ghostLine" hidden></span>
   </div>
 </div>
 
@@ -307,6 +341,12 @@ kbd {
 </div>
 
 <button class="pause-btn" id="pauseBtn" type="button" hidden>Duraklat</button>
+<button class="ability" id="abilityBtn" type="button" hidden>
+  <span id="abilityName">Nova</span>
+  <span class="bar"><i id="abilityFill"></i></span>
+  <small id="abilityHint">E tuşu</small>
+</button>
+<div class="flash" id="flash"></div>
 
 <div class="overlay" id="menu">
   <div class="card">
@@ -321,17 +361,19 @@ kbd {
       <button class="tab" role="tab" type="button" id="tab-skins" data-tab="skins" aria-selected="false" aria-controls="panel-skins">Toplar</button>
       <button class="tab" role="tab" type="button" id="tab-missions" data-tab="missions" aria-selected="false" aria-controls="panel-missions">Görevler</button>
       <button class="tab" role="tab" type="button" id="tab-upgrades" data-tab="upgrades" aria-selected="false" aria-controls="panel-upgrades">Yükselt</button>
+      <button class="tab" role="tab" type="button" id="tab-stats" data-tab="stats" aria-selected="false" aria-controls="panel-stats">İstatistik</button>
     </div>
 
     <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
-      <p>Hız artıyor, her 1000 metrede yeni bölge geliyor ve her bölgenin sonunda bir Gözcü seni bekliyor. Rampalardan uç, kombo yap, görevleri bitir.</p>
+      <p>Yedi bölge, her bölgenin sonunda bir Gözcü. Yol bazen ikiye ayrılır: riskli taraf kristal dolu, güvenli taraf sakin. Kristaller topunun yeteneğini doldurur; rekor hayaletin de yanında koşar.</p>
       <div class="keys desk-only">
         <span><kbd>←</kbd> <kbd>→</kbd></span><span>Şerit değiştir (A / D)</span>
         <span><kbd>↑</kbd> <kbd>Boşluk</kbd></span><span>Zıpla (W)</span>
         <span><kbd>↓</kbd></span><span>Eğil / hızlı in (S)</span>
+        <span><kbd>E</kbd> <kbd>Shift</kbd></span><span>Topun yeteneği</span>
         <span><kbd>P</kbd> <kbd>M</kbd></span><span>Duraklat · Müzik</span>
       </div>
-      <p class="touch-only">Sağa / sola kaydır: şerit · yukarı kaydır ya da dokun: zıpla · aşağı kaydır: eğil</p>
+      <p class="touch-only">Sağa / sola kaydır: şerit · yukarı kaydır ya da dokun: zıpla · aşağı kaydır: eğil · alttaki düğme: yetenek</p>
       <div class="legend">
         <span><i style="background:var(--coral)"></i>Blok: zıpla</span>
         <span><i style="background:#ff8a3d"></i>Bariyer: eğil</span>
@@ -339,13 +381,15 @@ kbd {
         <span><i style="background:var(--slider)"></i>Kayan blok</span>
         <span><i style="background:#c9d6dc"></i>Sarkaç: zıpla</span>
         <span><i style="background:var(--amber)"></i>Rampa: uç</span>
+        <span><i style="background:#000;outline:1px solid var(--coral)"></i>Uçurum: zıpla ya da köprüden geç</span>
       </div>
       <button class="btn" id="startBtn" type="button">Koşuya başla</button>
       <button class="btn alt" id="dailyBtn" type="button">Günlük meydan okuma<small id="dailyInfo">Herkes için aynı harita</small></button>
       <div class="row">
         <button class="ghost music-toggle" type="button">Müzik: Açık</button>
-        <p class="eyebrow" id="bestLine">En iyi puan: 0</p>
+        <button class="ghost ghost-toggle" type="button">Hayalet: Açık</button>
       </div>
+      <p class="eyebrow" id="bestLine">En iyi puan: 0</p>
     </section>
 
     <section class="panel" id="panel-skins" role="tabpanel" aria-labelledby="tab-skins" hidden>
@@ -365,6 +409,12 @@ kbd {
       <p>Güçlendirmelerin süresini uzat ya da her koşuya kalkanla başla.</p>
       <div class="list" id="upgradeList"></div>
       <p class="msg" id="upgradeMsg"></p>
+    </section>
+
+    <section class="panel" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
+      <div class="statgrid" id="statGrid"></div>
+      <h3>Neye çarptın <small id="deathTotal"></small></h3>
+      <ul class="list causes" id="causeList"></ul>
     </section>
   </div>
 </div>
@@ -386,7 +436,7 @@ kbd {
 <div class="overlay" id="overMenu" hidden>
   <div class="card">
     <p class="eyebrow" id="overEyebrow">Koşu bitti</p>
-    <h2>Çarptın!</h2>
+    <h2 id="overTitle">Çarptın!</h2>
     <div class="results">
       <div class="stat"><span class="label">Mesafe</span><span class="value" id="finalDist">0</span></div>
       <div class="stat"><span class="label">Kristal</span><span class="value crystal" id="finalCrystals">0</span></div>
@@ -421,11 +471,16 @@ kbd {
   const COLORS = { amber: 0xffb347, crystal: 0x5ef2ff, coral: 0xff5a5f, bar: 0xff8a3d, wall: 0x8a4dff,
                    shield: 0x9dffb0, magnet: 0xff4d8d, double: 0xffd23d, slow: 0x9b8cff, slider: 0xff3da8 };
 
+  // Zones cycle every ZONE_LEN metres: palette, obstacle mix [block, bar, wall], music key,
+  // ambient weather (fx) and an optional zone-only obstacle (special).
   const ZONES = [
-    { name: 'Gün Batımı',  css: '#ffb347', sky: 0x071a26, base: 0x0a2230, line: 0xffb347, grid: 0x5ef2ff, sun: 0xffb347, ridge: 0x0f3346, edge: 0x5ef2ff, mix: [0.40, 0.32, 0.28], root: 45 },
-    { name: 'Gece Mavisi', css: '#5ef2ff', sky: 0x040818, base: 0x0b1433, line: 0x5ef2ff, grid: 0x6b7bff, sun: 0xe8f0ff, ridge: 0x111a40, edge: 0x8fa0ff, mix: [0.30, 0.45, 0.25], root: 43 },
-    { name: 'Buz Vadisi',  css: '#dff8ff', sky: 0x0c2a3c, base: 0x15405a, line: 0xdff8ff, grid: 0x9fe8ff, sun: 0xbdf3ff, ridge: 0x1d4a60, edge: 0xdff8ff, mix: [0.45, 0.30, 0.25], root: 48 },
-    { name: 'Lav Kanyonu', css: '#ff6a3d', sky: 0x1a0606, base: 0x2a0e0c, line: 0xff6a3d, grid: 0xff3d2e, sun: 0xff5a3c, ridge: 0x3a1210, edge: 0xff8a3d, mix: [0.30, 0.25, 0.45], root: 40 }
+    { name: 'Gün Batımı',    css: '#ffb347', sky: 0x071a26, base: 0x0a2230, line: 0xffb347, grid: 0x5ef2ff, sun: 0xffb347, ridge: 0x0f3346, edge: 0x5ef2ff, mix: [0.40, 0.32, 0.28], root: 45 },
+    { name: 'Gece Mavisi',   css: '#5ef2ff', sky: 0x040818, base: 0x0b1433, line: 0x5ef2ff, grid: 0x6b7bff, sun: 0xe8f0ff, ridge: 0x111a40, edge: 0x8fa0ff, mix: [0.30, 0.45, 0.25], root: 43 },
+    { name: 'Çöl Fırtınası', css: '#ffd08a', sky: 0x2a1a0c, base: 0x3a2614, line: 0xffd08a, grid: 0xd9a35c, sun: 0xfff0c0, ridge: 0x4a3018, edge: 0xffd08a, mix: [0.45, 0.20, 0.35], root: 50, fx: 'sand', special: 'tornado' },
+    { name: 'Buz Vadisi',    css: '#dff8ff', sky: 0x0c2a3c, base: 0x15405a, line: 0xdff8ff, grid: 0x9fe8ff, sun: 0xbdf3ff, ridge: 0x1d4a60, edge: 0xdff8ff, mix: [0.45, 0.30, 0.25], root: 48, fx: 'snow' },
+    { name: 'Sualtı',        css: '#3dffd0', sky: 0x02253a, base: 0x063a4f, line: 0x3dffd0, grid: 0x2fb5c9, sun: 0x9ff7ff, ridge: 0x0a3d52, edge: 0x3dffd0, mix: [0.30, 0.40, 0.30], root: 47, fx: 'bubbles', special: 'jelly' },
+    { name: 'Lav Kanyonu',   css: '#ff6a3d', sky: 0x1a0606, base: 0x2a0e0c, line: 0xff6a3d, grid: 0xff3d2e, sun: 0xff5a3c, ridge: 0x3a1210, edge: 0xff8a3d, mix: [0.30, 0.25, 0.45], root: 40, fx: 'ash' },
+    { name: 'Uzay Boşluğu',  css: '#d27bff', sky: 0x02020a, base: 0x0e0e22, line: 0xd27bff, grid: 0x5a3dff, sun: 0xb08cff, ridge: 0x0a0a1e, edge: 0xd27bff, mix: [0.30, 0.30, 0.40], root: 42, fx: 'stars', special: 'meteor', lowGravity: true }
   ];
 
   // Ball skins; each leaves its own trail.
@@ -445,6 +500,17 @@ kbd {
       trailName: 'Altın para', trail: { shape: 'ring',  colors: [0xffd700, 0xfff6c2], size: 0.3, rate: 35, life: 0.9, vx: 1.2, vy: [2, 3.2], vz: [0.6, 1.2], g: -8 } }
   ];
 
+  // One ability per ball, charged by crystals.
+  const ABILITIES = {
+    amber:   { name: 'Nova',    desc: 'Öndeki 30 m engeli patlatır', dur: 0 },
+    ice:     { name: 'Dondur',  desc: 'Zaman 4 sn neredeyse durur', dur: 4 },
+    lava:    { name: 'Erit',    desc: '5 sn engelleri eritir, uçurumda süzülür', dur: 5 },
+    emerald: { name: 'Hasat',   desc: 'Üç şeride kristal yağar, 6 sn mıknatıs', dur: 0 },
+    nebula:  { name: 'Işınlan', desc: '40 m ileri ışınlanırsın', dur: 0 },
+    gold:    { name: 'Midas',   desc: 'Öndeki engeller kristale döner, 6 sn x3 kristal', dur: 6 }
+  };
+  const ENERGY_PER_CRYSTAL = 4;
+
   const MISSION_POOL = [
     { type: 'crystals', ns: [25, 50, 100],    text: n => `Tek koşuda ${n} kristal topla` },
     { type: 'dist',     ns: [500, 1500, 3000], text: n => `Tek koşuda ${n} m koş` },
@@ -453,7 +519,9 @@ kbd {
     { type: 'powers',   ns: [2, 4],           text: n => `Tek koşuda ${n} güçlendirme al` },
     { type: 'ramps',    ns: [2, 5],           text: n => `Rampalardan ${n} kez uç` },
     { type: 'bosses',   ns: [1, 2],           text: n => n === 1 ? 'Bir Gözcü\'yü atlat' : `${n} Gözcü atlat` },
-    { type: 'zone',     ns: [2, 3],           text: n => `${n}. bölgeye ulaş` }
+    { type: 'zone',     ns: [2, 3],           text: n => `${n}. bölgeye ulaş` },
+    { type: 'abilities', ns: [1, 3],          text: n => `Tek koşuda ${n} kez yetenek kullan` },
+    { type: 'risky',    ns: [1, 2],           text: n => n === 1 ? 'Çatalda riskli yolu seç' : `Riskli yolu ${n} kez seç` }
   ];
 
   const ACHIEVEMENTS = [
@@ -464,10 +532,13 @@ kbd {
     { id: 'combo25',   name: 'Kombo ustası',   desc: 'x5 çarpana ulaş',          test: r => r.combo >= 20 },
     { id: 'flight',    name: 'Kanatlı',        desc: 'Tek koşuda 5 rampa',       test: r => r.ramps >= 5 },
     { id: 'boss',      name: 'Gözcü avcısı',   desc: 'Bir Gözcü\'yü atlat',      test: r => r.bosses >= 1 },
-    { id: 'loop',      name: 'Tam tur',        desc: 'Dört bölgeyi de geç',      test: r => r.zone >= 5 },
+    { id: 'loop',      name: 'Tam tur',        desc: 'Yedi bölgeyi de geç',      test: r => r.zone >= ZONES.length + 1 },
+    { id: 'space',     name: 'Yörüngede',      desc: 'Uzay Boşluğu\'na ulaş',   test: r => r.zone >= 7 },
+    { id: 'brave',     name: 'Gözü kara',      desc: 'Riskli yolu 3 kez seç',    test: r => r.risky >= 3 },
     { id: 'daily',     name: 'Her gün',        desc: 'Günlük meydan okumayı oyna', test: r => r.daily && r.dist >= 100 },
     { id: 'collector', name: 'Koleksiyoncu',   desc: 'Tüm topları aç' },
-    { id: 'maxed',     name: 'Usta',           desc: 'Bir yükseltmeyi sona çıkar' }
+    { id: 'maxed',     name: 'Usta',           desc: 'Bir yükseltmeyi sona çıkar' },
+    { id: 'ghost',     name: 'Kendini geç',    desc: 'Rekor hayaletini geç' }
   ];
   const ACH_REWARD = 15;
 
@@ -782,6 +853,50 @@ kbd {
     trailGeo.attributes.color.needsUpdate = true;
   }
 
+  // ---------- Ambient zone weather (sand, snow, bubbles, ash, stars) ----------
+  const FX = {
+    sand:    { shape: 'dot',   color: 0xe8c38a, size: 0.2,  vx: [8, 16],     vy: [-0.5, 0.5], vz: [0, 0],   follow: 1 },
+    snow:    { shape: 'flake', color: 0xffffff, size: 0.28, vx: [-0.6, 0.6], vy: [-2, -1],    vz: [0, 0],   follow: 1 },
+    bubbles: { shape: 'ring',  color: 0x9ff7ff, size: 0.34, vx: [-0.3, 0.3], vy: [1.2, 2.6],  vz: [0, 0],   follow: 0.6 },
+    ash:     { shape: 'dot',   color: 0xff6a3d, size: 0.18, vx: [-0.5, 0.5], vy: [0.8, 2],    vz: [0, 0],   follow: 1 },
+    stars:   { shape: 'star',  color: 0xffffff, size: 0.3,  vx: [0, 0],      vy: [0, 0],      vz: [10, 22], follow: 1 }
+  };
+  const FX_N = 300;
+  const fxPos = new Float32Array(FX_N * 3), fxVel = new Float32Array(FX_N * 3);
+  const fxGeo = new THREE.BufferGeometry();
+  fxGeo.setAttribute('position', new THREE.BufferAttribute(fxPos, 3));
+  const fxMat = new THREE.PointsMaterial({ size: 0.2, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true });
+  const fxPoints = new THREE.Points(fxGeo, fxMat);
+  fxPoints.frustumCulled = false;
+  scene.add(fxPoints);
+  let fxCur = null;
+  function seedFx(cfg) {
+    for (let i = 0; i < FX_N; i++) {
+      fxPos[i * 3] = frand(-24, 24); fxPos[i * 3 + 1] = frand(0, 16); fxPos[i * 3 + 2] = frand(-100, 10);
+      fxVel[i * 3] = frand(cfg.vx[0], cfg.vx[1]); fxVel[i * 3 + 1] = frand(cfg.vy[0], cfg.vy[1]); fxVel[i * 3 + 2] = frand(cfg.vz[0], cfg.vz[1]);
+    }
+    if (!spriteCache[cfg.shape]) spriteCache[cfg.shape] = drawSprite(cfg.shape);
+    fxMat.map = spriteCache[cfg.shape]; fxMat.color.setHex(cfg.color); fxMat.size = cfg.size; fxMat.needsUpdate = true;
+  }
+  function updateFx(dt, dz, zone) {
+    const want = zone.fx ? FX[zone.fx] : null;
+    if (want !== fxCur) {
+      fxMat.opacity = Math.max(0, fxMat.opacity - dt * 1.5);
+      if (fxMat.opacity === 0) { fxCur = want; if (want) seedFx(want); }
+    } else if (fxCur) fxMat.opacity = Math.min(0.85, fxMat.opacity + dt * 0.8);
+    if (!fxCur) return;
+    for (let i = 0; i < FX_N; i++) {
+      let x = fxPos[i * 3] + fxVel[i * 3] * dt;
+      let y = fxPos[i * 3 + 1] + fxVel[i * 3 + 1] * dt;
+      let z = fxPos[i * 3 + 2] + fxVel[i * 3 + 2] * dt + dz * fxCur.follow;
+      if (x > 24) x -= 48; else if (x < -24) x += 48;
+      if (y > 16) y -= 16; else if (y < 0) y += 16;
+      if (z > 10) z -= 110;
+      fxPos[i * 3] = x; fxPos[i * 3 + 1] = y; fxPos[i * 3 + 2] = z;
+    }
+    fxGeo.attributes.position.needsUpdate = true;
+  }
+
   const skinTextures = {};
   function applySkin(id) {
     const s = SKINS.find(k => k.id === id) || SKINS[0];
@@ -797,6 +912,7 @@ kbd {
     trailMat.map = spriteCache[s.trail.shape];
     trailMat.size = s.trail.size;
     trailMat.needsUpdate = true;
+    renderAbilityUI();
   }
 
   // ---------- Shared geometry ----------
@@ -828,7 +944,15 @@ kbd {
     ramp: new THREE.BoxGeometry(1.9, 0.14, Math.hypot(RAMP_LEN, RAMP_H)),
     rampSide: new THREE.BoxGeometry(0.08, 0.08, Math.hypot(RAMP_LEN, RAMP_H)),
     tele: new THREE.PlaneGeometry(2.1, 44),
-    spark: new THREE.TetrahedronGeometry(0.09)
+    spark: new THREE.TetrahedronGeometry(0.09),
+    sign: new THREE.PlaneGeometry(4.6, 1.15),
+    gapEdge: new THREE.BoxGeometry(2.4, 0.05, 0.14),
+    tornado: new THREE.ConeGeometry(0.9, 3.6, 14, 1, true),
+    jellyDome: new THREE.SphereGeometry(0.6, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+    tentacle: new THREE.CylinderGeometry(0.03, 0.01, 0.9, 4),
+    rock: new THREE.DodecahedronGeometry(0.8, 0),
+    marker: new THREE.RingGeometry(0.6, 0.85, 24),
+    ghost: new THREE.SphereGeometry(BALL_R, 20, 14)
   };
   const MAT = {
     block: new THREE.MeshStandardMaterial({ color: COLORS.coral, emissive: COLORS.coral, emissiveIntensity: 0.35, roughness: 0.5 }),
@@ -848,16 +972,42 @@ kbd {
     frame: new THREE.MeshStandardMaterial({ color: 0x163c50, roughness: 0.7 }),
     ramp: new THREE.MeshStandardMaterial({ map: rampTex, emissive: 0xffffff, emissiveMap: rampTex, emissiveIntensity: 0.6 }),
     rampSide: new THREE.MeshBasicMaterial({ color: COLORS.amber }),
-    edge: new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })
+    edge: new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }),
+    divider: new THREE.MeshStandardMaterial({ color: 0x1b2c4a, emissive: 0x4d6bff, emissiveIntensity: 0.35, transparent: true, opacity: 0.9 }),
+    dividerTop: new THREE.MeshBasicMaterial({ color: 0x9fb4ff }),
+    gap: new THREE.MeshBasicMaterial({ color: 0x000000 }),
+    gapEdge: new THREE.MeshBasicMaterial({ color: COLORS.coral }),
+    rail: new THREE.MeshStandardMaterial({ color: 0xb8c4cc, metalness: 0.8, roughness: 0.3, emissive: 0x334455 }),
+    tornado: new THREE.MeshBasicMaterial({ color: 0xe0b070, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }),
+    jelly: new THREE.MeshBasicMaterial({ color: 0xff7ad9, transparent: true, opacity: 0.8 }),
+    tentacle: new THREE.MeshBasicMaterial({ color: 0xffb3ec }),
+    rock: new THREE.MeshStandardMaterial({ color: 0x5a4a6a, emissive: 0xd27bff, emissiveIntensity: 0.25, flatShading: true }),
+    marker: new THREE.MeshBasicMaterial({ color: COLORS.coral, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
   };
   const EDGES = { block: new THREE.EdgesGeometry(GEO.block), wall: new THREE.EdgesGeometry(GEO.wall), slider: new THREE.EdgesGeometry(GEO.slider) };
   const PICKUPS = new Set(['crystal', 'shield', 'magnet', 'double', 'slow']);
+
+  // Fork sign: which side is risky
+  const SIGN_MAT = {};
+  function signMat(riskLeft) {
+    const key = riskLeft ? 'L' : 'R';
+    if (!SIGN_MAT[key]) SIGN_MAT[key] = new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, map: canvasTex(512, 128, (g, w, h) => {
+      g.fillStyle = 'rgba(7,26,38,0.88)'; g.fillRect(0, 0, w, h);
+      g.font = 'bold 44px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const L = riskLeft ? ['◀ RİSKLİ', '#ff5a5f'] : ['◀ GÜVENLİ', '#9dffb0'];
+      const R = riskLeft ? ['GÜVENLİ ▶', '#9dffb0'] : ['RİSKLİ ▶', '#ff5a5f'];
+      g.fillStyle = L[1]; g.fillText(L[0], w / 4, h / 2 + 2);
+      g.fillStyle = R[1]; g.fillText(R[0], w * 3 / 4, h / 2 + 2);
+      g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(w / 2 - 1, 14, 2, h - 28);
+    }) });
+    return SIGN_MAT[key];
+  }
 
   // Entity: { kind, mesh, lane, box?, sphere?, alive, ... }
   let entities = [];
   let sparks = [];
 
-  function addEntity(kind, lane, z, extraY = 0) {
+  function addEntity(kind, lane, z, extraY = 0, opts = {}) {
     const x = LANES[lane];
     let mesh, e = { kind, lane, alive: true };
     if (kind === 'block') {
@@ -905,6 +1055,60 @@ kbd {
       slab.rotation.x = ang; slab.position.y = RAMP_H / 2; mesh.add(slab);
       for (const s of [-1, 1]) { const r = new THREE.Mesh(GEO.rampSide, MAT.rampSide); r.rotation.x = ang; r.position.set(s * 0.95, RAMP_H / 2 + 0.08, 0); mesh.add(r); }
       mesh.position.set(x, 0, z);
+    } else if (kind === 'divider') {
+      // Long wall down the middle lane that splits the road in two
+      const len = opts.len;
+      mesh = new THREE.Group();
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, len), MAT.divider); wall.position.y = 1.1; mesh.add(wall);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.08, len), MAT.dividerTop); top.position.y = 2.24; mesh.add(top);
+      mesh.position.set(0, 0, z - len / 2);
+      e.box = { w: 1.5, d: len, y0: 0, y1: 2.2 }; e.len = len;
+    } else if (kind === 'sign') {
+      mesh = new THREE.Mesh(GEO.sign, signMat(opts.riskySide === 0));
+      mesh.position.set(0, 3.6, z);
+    } else if (kind === 'strip') {
+      const len = opts.len;
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.2, len), new THREE.MeshBasicMaterial({ color: opts.color, transparent: true, opacity: 0.16, depthWrite: false }));
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(x, 0.015, z - len / 2);
+      e.len = len;
+    } else if (kind === 'gap') {
+      const len = opts.len;
+      mesh = new THREE.Group();
+      const hole = new THREE.Mesh(new THREE.PlaneGeometry(2.4, len), MAT.gap); hole.rotation.x = -Math.PI / 2; hole.position.y = 0.025; mesh.add(hole);
+      for (const s of [-1, 1]) { const ed = new THREE.Mesh(GEO.gapEdge, MAT.gapEdge); ed.position.set(0, 0.03, s * len / 2); mesh.add(ed); }
+      mesh.position.set(x, 0, z - len / 2);
+      e.len = len; e.gap = true;
+    } else if (kind === 'rails') {
+      const len = opts.len;
+      mesh = new THREE.Group();
+      for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, len), MAT.rail); r.position.set(s * 1.1, 0.07, 0); mesh.add(r); }
+      mesh.position.set(x, 0, z - len / 2);
+      e.len = len;
+    } else if (kind === 'tornado') {
+      // Sand twister sweeping all three lanes
+      mesh = new THREE.Group();
+      for (let i = 0; i < 3; i++) { const c = new THREE.Mesh(GEO.tornado, MAT.tornado); c.rotation.x = Math.PI; c.position.y = 1.8 + i * 0.25; c.scale.setScalar(1 - i * 0.2); mesh.add(c); }
+      e.amp = 2.4; e.phase = rand(0, Math.PI * 2); e.w = rand(1.0, 1.4);
+      mesh.position.set(0, 0, z);
+      e.box = { w: 1.3, d: 1.2, y0: 0, y1: 3.6 }; e.dynamicX = true;
+    } else if (kind === 'jelly') {
+      // Jellyfish bobbing up and down in one lane
+      mesh = new THREE.Group();
+      mesh.add(new THREE.Mesh(GEO.jellyDome, MAT.jelly));
+      for (let i = 0; i < 6; i++) { const t = new THREE.Mesh(GEO.tentacle, MAT.tentacle); const a = i / 6 * Math.PI * 2; t.position.set(Math.cos(a) * 0.35, -0.45, Math.sin(a) * 0.35); mesh.add(t); }
+      e.phase = rand(0, Math.PI * 2); e.r = 0.6; e.center = new THREE.Vector3();
+      mesh.position.set(x, 1.5, z);
+    } else if (kind === 'meteor') {
+      // Falls from the sky onto a marked lane and stays as a rock
+      mesh = new THREE.Group();
+      const rock = new THREE.Mesh(GEO.rock, MAT.rock); rock.position.y = 18; mesh.add(rock);
+      const mark = new THREE.Mesh(GEO.marker, MAT.marker); mark.rotation.x = -Math.PI / 2; mark.position.y = 0.04; mesh.add(mark);
+      mesh.position.set(x, 0, z);
+      e.rock = rock; e.mark = mark; e.r = 0.8; e.center = new THREE.Vector3(x, 18, z);
+      e.fall = 17.2 * Math.max(speed, START_SPEED) / 65; e.landed = false;
+    } else if (kind === 'trigger') {
+      mesh = new THREE.Group(); mesh.position.set(0, 0, z); e.onPass = opts.onPass;
     } else if (kind === 'crystal') {
       mesh = new THREE.Mesh(GEO.crystal, MAT.crystal);
       mesh.position.set(x, 0.75 + extraY, z);
@@ -981,7 +1185,10 @@ kbd {
     mission: () => seq([784, 988, 1175], 70, 'sine', 0.09),
     buy: () => { tone(700, 0.1, 'sine', 0.08); setTimeout(() => tone(1050, 0.16, 'sine', 0.08), 80); },
     deny: () => tone(180, 0.15, 'square', 0.05),
-    crash: () => tone(160, 0.6, 'sawtooth', 0.14, 40)
+    crash: () => tone(160, 0.6, 'sawtooth', 0.14, 40),
+    fall: () => tone(420, 0.9, 'sine', 0.12, 60),
+    ability: () => seq([392, 523, 784, 1046], 50, 'sawtooth', 0.07, 0.2),
+    ready: () => seq([880, 1320], 80, 'sine', 0.07)
   };
 
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -1074,6 +1281,8 @@ kbd {
   let combo = 0, comboT = 0;
   let daily = false;
   let boss = null, bossDoneLevel = -1;
+  let timeScale = 1, falling = false;
+  let energy = 0, abilityT = 0, abilityMax = 1, abilityKind = null, invulnT = 0;
   const pw = { magnet: 0, double: 0, slow: 0 };
   const pwMax = { magnet: 1, double: 1, slow: 1 };
   let run = {};
@@ -1091,7 +1300,10 @@ kbd {
     newBest: $('newBest'), bestLine: $('bestLine'), bestLine2: $('bestLine2'),
     skins: $('skins'), skinMsg: $('skinMsg'), bank: $('bank'),
     missionList: $('missionList'), pauseMissions: $('pauseMissions'), achList: $('achList'), achCount: $('achCount'),
-    upgradeList: $('upgradeList'), upgradeMsg: $('upgradeMsg'), dailyInfo: $('dailyInfo')
+    upgradeList: $('upgradeList'), upgradeMsg: $('upgradeMsg'), dailyInfo: $('dailyInfo'),
+    abilityBtn: $('abilityBtn'), abilityName: $('abilityName'), abilityFill: $('abilityFill'), abilityHint: $('abilityHint'),
+    flash: $('flash'), ghostLine: $('ghostLine'), overTitle: $('overTitle'),
+    statGrid: $('statGrid'), causeList: $('causeList'), deathTotal: $('deathTotal')
   };
 
   // ---------- Toasts ----------
@@ -1170,7 +1382,8 @@ kbd {
       const tr = document.createElement('span'); tr.className = 'trail'; tr.textContent = `İz: ${s.trailName}`;
       const pr = document.createElement('span'); pr.className = 'price';
       pr.textContent = skin === s.id ? 'Seçili' : has ? 'Seç' : `${s.cost} kristal`;
-      b.append(sw, nm, tr, pr);
+      const ab = document.createElement('span'); ab.className = 'trail'; ab.textContent = `Yetenek: ${ABILITIES[s.id].name}`;
+      b.append(sw, nm, tr, ab, pr);
       b.addEventListener('click', () => chooseSkin(s, b));
       ui.skins.append(b);
     }
@@ -1241,7 +1454,7 @@ kbd {
     const d = new Date();
     ui.dailyInfo.textContent = `${d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} · bugünkü en iyi: ${dailyRec.best}` +
       (dailyRec.rewarded ? '' : ' · 500 m koş: +40 kristal');
-    renderSkins(); renderMissions(ui.missionList, false); renderAchievements(); renderUpgrades();
+    renderSkins(); renderMissions(ui.missionList, false); renderAchievements(); renderUpgrades(); renderStats();
   }
   function selectTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
@@ -1265,7 +1478,10 @@ kbd {
     combo = 0; comboT = 0;
     pw.magnet = pw.double = pw.slow = 0;
     zoneLevel = 0; zoneIdx = 0; bossDoneLevel = -1;
-    run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0 };
+    run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0, abilities: 0, risky: 0 };
+    energy = 0; abilityT = 0; invulnT = 0; falling = false; timeScale = 1;
+    runTime = 0; ghostRec = []; ghostNextT = 0; ghostPassed = false; ghostData = null;
+    ghostGroup.visible = false; ui.ghostLine.hidden = true;
     runUnlocks = [];
     ui.bossbar.hidden = true;
   }
@@ -1275,12 +1491,13 @@ kbd {
     if (audio && audio.state === 'suspended') audio.resume();
     resetRunState();
     daily = isDaily; run.daily = isDaily;
+    ghostData = loadGhost();
     rng = daily ? mulberry32(Number(todayKey())) : Math.random;
     speed = START_SPEED;
     shield = upgrades.shield > 0;
     state = 'play';
     ui.menu.hidden = true; ui.overMenu.hidden = true; ui.pauseMenu.hidden = true;
-    ui.hud.hidden = false; ui.pauseBtn.hidden = false; ui.powers.hidden = false;
+    ui.hud.hidden = false; ui.pauseBtn.hidden = false; ui.powers.hidden = false; ui.abilityBtn.hidden = false;
     for (let i = 0; i < 5; i++) addEntity('crystal', 1, -14 - i * 2.2);
   }
 
@@ -1289,12 +1506,12 @@ kbd {
   }
 
   function toMenu() {
-    if (state === 'paused') finishRun();
+    if (state === 'paused') { recordStats(null); finishRun(); }
     resetRunState();
     state = 'menu';
     rng = Math.random;
     ui.overMenu.hidden = true; ui.pauseMenu.hidden = true;
-    ui.hud.hidden = true; ui.pauseBtn.hidden = true; ui.powers.hidden = true; ui.combo.hidden = true;
+    ui.hud.hidden = true; ui.pauseBtn.hidden = true; ui.powers.hidden = true; ui.combo.hidden = true; ui.abilityBtn.hidden = true;
     ui.zoneBanner.hidden = true;
     renderMenu();
     ui.menu.hidden = false;
@@ -1306,17 +1523,20 @@ kbd {
     else if (!p && state === 'paused') { state = 'play'; ui.pauseMenu.hidden = true; }
   }
 
-  function gameOver() {
+  function gameOver(cause) {
     state = 'over';
-    sfx.crash();
-    shake = 0.6;
-    burst(ball.position.clone(), ballLight.color.getHex(), 30);
+    if (cause === 'gap') sfx.fall();
+    else { sfx.crash(); shake = 0.6; burst(ball.position.clone(), ballLight.color.getHex(), 30); }
     unlock('first');
+    recordStats(cause);
     const final = Math.floor(score);
     const isBest = final > best;
+    if (ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
     if (isBest) { best = final; store.set('kehribar-best', best); }
     addBank(crystals);
     let dailyNote = '';
+    ui.overTitle.textContent = cause === 'gap' ? 'Düştün!' : 'Çarptın!';
+    ui.ghostLine.hidden = true; ghostGroup.visible = false;
     if (daily) {
       if (final > dailyRec.best) dailyRec.best = final;
       if (!dailyRec.rewarded && dist >= 500) { dailyRec.rewarded = true; addBank(40); dailyNote = ' · günlük ödül +40'; }
@@ -1327,7 +1547,7 @@ kbd {
     ui.finalDist.textContent = `${Math.floor(dist)} m`;
     ui.finalCrystals.textContent = crystals;
     ui.finalScore.textContent = final;
-    ui.finalExtra.textContent = `En uzun kombo: ${run.combo} · Bölge ${zoneLevel + 1} (${ZONES[zoneIdx].name}) · Gözcü: ${run.bosses} · Rampa: ${run.ramps}`;
+    ui.finalExtra.textContent = `${cause ? `Sebep: ${DEATH_NAMES[cause] || cause} · ` : ''}En uzun kombo: ${run.combo} · Bölge ${zoneLevel + 1} (${ZONES[zoneIdx].name}) · Gözcü: ${run.bosses} · Rampa: ${run.ramps}`;
     ui.bankGain.textContent = `+${crystals} kristal kasaya${dailyNote} · Kasa: ${bank}`;
     const parts = [];
     if (run.missionsDone) parts.push(`${run.missionsDone} görev tamamlandı`);
@@ -1336,7 +1556,7 @@ kbd {
     ui.finalUnlocks.hidden = !parts.length;
     ui.newBest.hidden = !isBest;
     ui.bestLine2.textContent = `En iyi puan: ${best}`;
-    ui.pauseBtn.hidden = true; ui.combo.hidden = true; ui.powers.hidden = true; ui.bossbar.hidden = true;
+    ui.pauseBtn.hidden = true; ui.combo.hidden = true; ui.powers.hidden = true; ui.bossbar.hidden = true; ui.abilityBtn.hidden = true;
     setTimeout(() => { if (state === 'over') { ui.overMenu.hidden = false; $('restartBtn').focus(); } }, 650);
   }
 
@@ -1416,8 +1636,186 @@ kbd {
       run.bosses++;
       const bonus = 10 + 5 * zoneLevel;
       crystals += bonus; score += 250;
+      addEnergy(40);
       toast('Gözcü atlatıldı', `+${bonus} kristal · +250 puan`, 'var(--coral)');
       sfx.win();
+    }
+  }
+
+  // ---------- Ghost of the best run ----------
+  const GHOST_DT = 0.1, GHOST_MAX = 6000;
+  let ghostOn = store.get('kehribar-ghost-on', true);
+  let ghostRec = [], ghostNextT = 0, runTime = 0, ghostData = null, ghostPassed = false;
+  const ghostGroup = new THREE.Group();
+  const ghostBall = new THREE.Mesh(GEO.ghost, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false }));
+  const ghostWire = new THREE.Mesh(new THREE.IcosahedronGeometry(0.53, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.35 }));
+  const ghostTag = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, map: canvasTex(128, 40, (g, w, h) => {
+    g.fillStyle = 'rgba(7,26,38,.6)'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#ffffff'; g.font = 'bold 22px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('REKOR', w / 2, h / 2 + 1);
+  }) }));
+  ghostTag.scale.set(1.1, 0.34, 1); ghostTag.position.y = 1.0;
+  ghostGroup.add(ghostBall, ghostWire, ghostTag);
+  ghostGroup.visible = false;
+  scene.add(ghostGroup);
+
+  function loadGhost() {
+    if (!ghostOn) return null;
+    if (daily) { const g = store.get('kehribar-ghost-daily', null); return g && g.date === todayKey() ? g.data : null; }
+    const g = store.get('kehribar-ghost', null);
+    return g && Array.isArray(g.data) && g.data.length > 6 ? g.data : null;
+  }
+  function saveGhost() {
+    const data = ghostRec.slice(0, GHOST_MAX * 3);
+    if (daily) store.set('kehribar-ghost-daily', { date: todayKey(), data });
+    else store.set('kehribar-ghost', { data });
+  }
+  function setGhost(on) {
+    ghostOn = on; store.set('kehribar-ghost-on', on);
+    document.querySelectorAll('.ghost-toggle').forEach(b => b.textContent = `Hayalet: ${on ? 'Açık' : 'Kapalı'}`);
+  }
+  function updateGhost(dt) {
+    runTime += dt;
+    while (ghostNextT <= runTime && ghostRec.length < GHOST_MAX * 3) {
+      ghostRec.push(Math.round(dist * 10) / 10, Math.round(px * 100) / 100, Math.round(py * 100) / 100);
+      ghostNextT += GHOST_DT;
+    }
+    if (!ghostData) { ghostGroup.visible = false; ui.ghostLine.hidden = true; return; }
+    const frames = ghostData.length / 3;
+    const f = runTime / GHOST_DT, i = Math.floor(f);
+    ui.ghostLine.hidden = false;
+    if (i >= frames - 1) {
+      ghostGroup.visible = false;
+      const end = ghostData[(frames - 1) * 3];
+      if (dist > end && !ghostPassed) {
+        ghostPassed = true;
+        toast('Rekor hayaleti', 'Rekor koşunu geçtin', '#ffffff');
+        unlock('ghost');
+      }
+      ui.ghostLine.textContent = dist > end ? 'Rekoru geçtin' : `Rekor ${Math.floor(end)} m'de bitti`;
+      return;
+    }
+    const t = f - i, a = i * 3, b = a + 3;
+    const gd = ghostData[a] + (ghostData[b] - ghostData[a]) * t;
+    const gx = ghostData[a + 1] + (ghostData[b + 1] - ghostData[a + 1]) * t;
+    const gy = ghostData[a + 2] + (ghostData[b + 2] - ghostData[a + 2]) * t;
+    const rel = gd - dist;
+    ghostGroup.position.set(gx, gy + BALL_R, -rel);
+    ghostGroup.visible = rel < 90 && rel > -8;
+    ghostWire.rotation.x -= dt * 4;
+    ui.ghostLine.textContent = rel >= 0 ? `Rekor: ${Math.round(rel)} m önde` : `Rekor: ${Math.round(-rel)} m geride`;
+  }
+
+  // ---------- Lifetime statistics ----------
+  const DEATH_NAMES = { block: 'Blok', bar: 'Bariyer', wall: 'Duvar', slider: 'Kayan blok', pendulum: 'Sarkaç', orb: 'Gözcü küresi',
+                        gap: 'Uçurum', tornado: 'Kum hortumu', jelly: 'Denizanası', meteor: 'Meteor', divider: 'Ayırıcı duvar' };
+  let stats = Object.assign({ runs: 0, dist: 0, crystals: 0, jumps: 0, ramps: 0, bosses: 0, abilities: 0, risky: 0, time: 0,
+                              bestDist: 0, bestCombo: 0, deaths: {}, skinRuns: {} }, store.get('kehribar-stats', {}));
+  function recordStats(cause) {
+    stats.runs++; stats.dist += Math.floor(dist); stats.crystals += crystals;
+    stats.jumps += run.jumps; stats.ramps += run.ramps; stats.bosses += run.bosses;
+    stats.abilities += run.abilities; stats.risky += run.risky; stats.time += runTime;
+    stats.bestDist = Math.max(stats.bestDist, Math.floor(dist)); stats.bestCombo = Math.max(stats.bestCombo, run.combo);
+    if (cause) stats.deaths[cause] = (stats.deaths[cause] || 0) + 1;
+    stats.skinRuns[skin] = (stats.skinRuns[skin] || 0) + 1;
+    store.set('kehribar-stats', stats);
+  }
+  function renderStats() {
+    const fav = Object.entries(stats.skinRuns).sort((a, b) => b[1] - a[1])[0];
+    const favSkin = fav && SKINS.find(s => s.id === fav[0]);
+    const items = [
+      ['Koşu', stats.runs], ['Toplam mesafe', `${(stats.dist / 1000).toFixed(1)} km`],
+      ['Toplam kristal', stats.crystals], ['En uzun koşu', `${stats.bestDist} m`],
+      ['En iyi puan', best], ['En uzun seri', stats.bestCombo],
+      ['Zıplama', stats.jumps], ['Rampa uçuşu', stats.ramps],
+      ['Atlatılan Gözcü', stats.bosses], ['Yetenek kullanımı', stats.abilities],
+      ['Riskli yol', stats.risky], ['Oyun süresi', `${Math.round(stats.time / 60)} dk`],
+      ['En sevdiğin top', favSkin ? favSkin.name : '-'], ['Başarım', `${achieved.length} / ${ACHIEVEMENTS.length}`]
+    ];
+    ui.statGrid.innerHTML = '';
+    for (const [k, v] of items) {
+      const d = document.createElement('div');
+      const b = document.createElement('b'); b.textContent = v;
+      const sp = document.createElement('span'); sp.textContent = k;
+      d.append(b, sp); ui.statGrid.append(d);
+    }
+    const entries = Object.entries(stats.deaths).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((n, e) => n + e[1], 0);
+    ui.deathTotal.textContent = total ? `${total} çarpışma` : '';
+    ui.causeList.innerHTML = '';
+    if (!entries.length) {
+      const li = document.createElement('li'); li.className = 'empty';
+      li.textContent = 'Henüz bir şeye çarpmadın. İlk koşundan sonra burada görünür.';
+      ui.causeList.append(li);
+      return;
+    }
+    const max = entries[0][1];
+    for (const [k, n] of entries) {
+      const li = document.createElement('li');
+      const nm = document.createElement('span'); nm.textContent = DEATH_NAMES[k] || k;
+      const bar = document.createElement('span'); bar.className = 'bar';
+      const fill = document.createElement('i'); fill.style.width = `${(n / max) * 100}%`; bar.append(fill);
+      const em = document.createElement('em'); em.textContent = n;
+      li.append(nm, bar, em); ui.causeList.append(li);
+    }
+  }
+
+  // ---------- Ball abilities ----------
+  const touchUI = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  function renderAbilityUI() {
+    const a = ABILITIES[skin], sk = SKINS.find(s => s.id === skin);
+    ui.abilityName.textContent = a.name;
+    ui.abilityHint.textContent = `${touchUI ? 'Dokun' : 'E tuşu'} · ${a.desc}`;
+    ui.abilityBtn.style.setProperty('--c', sk.base);
+  }
+  function addEnergy(n) {
+    const was = energy >= 100;
+    energy = Math.min(100, energy + n);
+    if (!was && energy >= 100 && state === 'play') {
+      toast('Yetenek hazır', `${ABILITIES[skin].name} · ${touchUI ? 'alttaki düğmeye dokun' : 'E tuşu'}`, SKINS.find(s => s.id === skin).base);
+      sfx.ready();
+    }
+  }
+  function flashScreen(color) {
+    ui.flash.style.setProperty('--c', color);
+    ui.flash.classList.remove('go'); void ui.flash.offsetWidth; ui.flash.classList.add('go');
+  }
+  const isObstacle = e => (e.box || e.r || e.gap) && !e.len;   // fork walls and bridge gaps longer than a hop stay put
+  function useAbility() {
+    if (state !== 'play' || energy < 100) return;
+    energy = 0; run.abilities++;
+    abilityKind = skin;
+    sfx.ability();
+    if (skin === 'amber') {
+      for (const e of entities) {
+        const z = e.mesh.position.z;
+        if (e.alive && isObstacle(e) && z > -32 && z < 3) { burst(e.center ? e.center.clone() : e.mesh.position.clone(), COLORS.amber, 14, 10); removeEntity(e); }
+      }
+      flashScreen('#ffb347'); shake = 0.3;
+    } else if (skin === 'emerald') {
+      for (let l = 0; l < 3; l++) crystalLine(l, -16, 6);
+      pwMax.magnet = Math.max(pw.magnet, 6); pw.magnet = pwMax.magnet;
+      flashScreen('#2bd98c');
+    } else if (skin === 'nebula') {
+      const hop = 40;
+      dist += hop; score += hop * (pw.double > 0 ? 2 : 1);
+      for (const e of entities) e.mesh.position.z += hop;
+      invulnT = 1.0;
+      flashScreen('#9b6bff');
+    } else if (skin === 'gold') {
+      for (const e of [...entities]) {
+        const z = e.mesh.position.z;
+        if (e.alive && isObstacle(e) && z > -50 && z < 2) {
+          const l = e.dynamicX || e.kind === 'pendulum' ? 1 : e.lane;
+          removeEntity(e);
+          for (let k = 0; k < 2; k++) addEntity('crystal', l, z - k * 1.8);
+        }
+      }
+      abilityT = abilityMax = ABILITIES.gold.dur;
+      flashScreen('#ffd700');
+    } else {
+      abilityT = abilityMax = ABILITIES[skin].dur;
+      flashScreen(skin === 'ice' ? '#9fefff' : '#ff6a3d');
     }
   }
 
@@ -1455,6 +1853,7 @@ kbd {
     else if (k === 'arrowright' || k === 'd') moveLane(1);
     else if (k === 'arrowup' || k === 'w' || k === ' ') { e.preventDefault(); jump(); }
     else if (k === 'arrowdown' || k === 's') { e.preventDefault(); duck(); }
+    else if (k === 'e' || k === 'shift') useAbility();
   });
 
   let touch = null;
@@ -1481,6 +1880,8 @@ kbd {
   $('quitBtn').addEventListener('click', toMenu);
   $('resumeBtn').addEventListener('click', () => setPaused(false));
   ui.pauseBtn.addEventListener('click', () => setPaused(true));
+  ui.abilityBtn.addEventListener('click', () => { useAbility(); ui.abilityBtn.blur(); });
+  document.querySelectorAll('.ghost-toggle').forEach(b => b.addEventListener('click', () => setGhost(!ghostOn)));
   document.querySelectorAll('.music-toggle').forEach(b => b.addEventListener('click', () => { initAudio(); setMusic(!musicOn); }));
   document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 
@@ -1497,17 +1898,24 @@ kbd {
       return;
     }
 
+    const ev = rng();
+    if (dist > 300 && ev < 0.06) { spawnFork(); return 'long'; }
+    if (dist > 250 && ev < 0.12) { spawnBridge(); return 'long'; }
+    if (zone.special && ev < 0.32) { spawnSpecial(zone.special); return; }
+
     const special = rng();
     if (dist > 200 && special < 0.09) {            // ramp + sky crystal arc
       const l = Math.floor(rng() * 3);
       addEntity('ramp', l, z);
-      const v = speed * (pw.slow > 0 ? SLOW_FACTOR : 1);
-      for (let t = 0.3; t < 2.5; t += 0.22) {
-        const y = RAMP_V * t - 0.5 * GLIDE_GRAVITY * t * t;
+      const v = speed * timeScale;
+      const gG = GLIDE_GRAVITY * (zone.lowGravity ? 0.6 : 1);
+      const air = 2 * RAMP_V / gG;
+      for (let t = 0.3; t < air; t += 0.22) {
+        const y = RAMP_V * t - 0.5 * gG * t * t;
         if (y < 0.4) break;
         addEntity('crystal', l, z - RAMP_LEN / 2 - v * t, y);
       }
-      nextSpawnAt = dist + v * 2.8;
+      nextSpawnAt = dist + v * (air + 0.4);
       return 'ramp';
     }
     if (dist > 800 && special < 0.16) {            // pendulum gate across the whole road
@@ -1546,6 +1954,63 @@ kbd {
     if (roll < 0.72) crystalLine(pick(free), z, 3 + Math.floor(rng() * 3));
   }
 
+  // Road splits around a long middle wall: one side dense with obstacles and crystals, the other calm.
+  function spawnFork() {
+    const z0 = SPAWN_Z, L = 130;
+    const risky = rng() < 0.5 ? 0 : 2, safe = 2 - risky;
+    addEntity('divider', 1, z0, 0, { len: L });
+    addEntity('sign', 1, z0 + 0.5, 0, { riskySide: risky });
+    addEntity('strip', risky, z0, 0, { len: L, color: COLORS.coral });
+    addEntity('strip', safe, z0, 0, { len: L, color: COLORS.shield });
+    const step = Math.max(1, speed / 22);
+    for (let d = 16; d < L - 12; d += rand(11, 14) * step) {
+      const zz = z0 - d, r = rng();
+      if (r < 0.4) { addEntity('block', risky, zz); addEntity('crystal', risky, zz, 1.6); }
+      else if (r < 0.7) addEntity('bar', risky, zz);
+      else addEntity('gap', risky, zz + 1.5, 0, { len: 3 });
+      for (let k = 1; k <= 3; k++) addEntity('crystal', risky, zz - 2.6 - k * 1.8);
+    }
+    for (let d = 25; d < L; d += 32) crystalLine(safe, z0 - d, 2);
+    addEntity('trigger', 1, z0 - 20, 0, { onPass: () => {
+      if (lane === risky) { run.risky++; toast('Riskli yol', 'Kristaller senin, dikkatli ol', 'var(--coral)'); }
+      else toast('Güvenli yol', 'Sakin bir geçiş', 'var(--shield)');
+    } });
+    nextSpawnAt = dist + L + 14;
+  }
+
+  // Chasm with a railed bridge in one lane; consecutive bridges switch lanes.
+  function spawnBridge() {
+    let z = SPAWN_Z;
+    let l = Math.floor(rng() * 3);
+    const sections = 1 + (rng() < 0.6 ? 1 : 0) + (dist > 1500 && rng() < 0.5 ? 1 : 0);
+    for (let s = 0; s < sections; s++) {
+      const len = rand(18, 28);
+      for (let k = 0; k < 3; k++) if (k !== l) addEntity('gap', k, z, 0, { len });
+      addEntity('rails', l, z, 0, { len });
+      crystalLine(l, z - 7, Math.max(2, Math.floor((len - 4) / 2.2)));
+      z -= len + rand(9, 12) * Math.max(1, speed / 22);
+      l = (l + 1 + Math.floor(rng() * 2)) % 3;
+    }
+    nextSpawnAt = dist + (SPAWN_Z - z) + 6;
+  }
+
+  function spawnSpecial(kind) {
+    const z = SPAWN_Z;
+    const lanes = shuffle([0, 1, 2]);
+    if (kind === 'tornado') {
+      addEntity('tornado', 1, z);
+      crystalLine(lanes[0], z - 10, 3);
+    } else if (kind === 'jelly') {
+      addEntity('jelly', lanes[0], z);
+      if (rng() < 0.5) addEntity('jelly', lanes[1], z - 4);
+      crystalLine(lanes[2], z, 4);
+    } else if (kind === 'meteor') {
+      addEntity('meteor', lanes[0], z);
+      if (rng() < 0.4) addEntity('meteor', lanes[1], z - 8);
+      crystalLine(lanes[2], z, 4);
+    }
+  }
+
   const comboMult = () => Math.min(5, 1 + Math.floor(combo / 5));
   function collect(e) {
     removeEntity(e);
@@ -1554,7 +2019,8 @@ kbd {
       combo++; comboT = COMBO_WINDOW;
       run.combo = Math.max(run.combo, combo);
       const mult = comboMult();
-      score += 10 * mult * (pw.double > 0 ? 2 : 1);
+      score += 10 * mult * (pw.double > 0 ? 2 : 1) * (abilityT > 0 && abilityKind === 'gold' ? 3 : 1);
+      addEnergy(ENERGY_PER_CRYSTAL);
       sfx.crystal(combo);
       if (combo % 5 === 0 && combo <= 20) {
         sfx.comboUp();
@@ -1571,12 +2037,30 @@ kbd {
   }
 
   function hitObstacle(e) {
+    if (invulnT > 0) return false;
+    if (abilityT > 0 && abilityKind === 'lava' && !e.len) {
+      removeEntity(e);
+      burst(e.center ? e.center.clone() : e.mesh.position.clone(), 0xff6a3d, 18, 8); sfx.block();
+      return false;
+    }
     if (shield) {
       shield = false; removeEntity(e);
       burst(e.center ? e.center.clone() : e.mesh.position.clone(), COLORS.shield, 22); sfx.block(); shake = 0.3;
       return false;
     }
-    gameOver();
+    gameOver(e.kind);
+    return true;
+  }
+
+  function fallInto(e) {
+    if (shield) {
+      shield = false; vy = JUMP_V * 1.1; grounded = false;
+      burst(ball.position.clone(), COLORS.shield, 22); sfx.block();
+      toast('Kalkan', 'Uçurumdan sekip kurtuldun', 'var(--shield)');
+      return false;
+    }
+    falling = true; grounded = false; vy = 0;
+    gameOver('gap');
     return true;
   }
 
@@ -1592,10 +2076,12 @@ kbd {
       speed = Math.min(MAX_SPEED, speed + ACCEL * dt);
       for (const k in pw) if (pw[k] > 0) pw[k] = Math.max(0, pw[k] - dt);
       if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
+      if (abilityT > 0) abilityT = Math.max(0, abilityT - dt);
+      if (invulnT > 0) invulnT -= dt;
     } else if (state === 'menu') {
       speed = 9;
     }
-    const timeScale = pw.slow > 0 ? SLOW_FACTOR : 1;
+    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1);
     const dz = moving ? speed * timeScale * dt : 0;
     if (moving) clock += dt * timeScale;
     if (playing) {
@@ -1604,12 +2090,13 @@ kbd {
       const lvl = Math.floor(dist / ZONE_LEN);
       if (lvl !== zoneLevel) {
         zoneLevel = lvl; zoneIdx = lvl % ZONES.length;
-        showBanner(`Bölge ${zoneLevel + 1}`, ZONES[zoneIdx].name, ZONES[zoneIdx].css); sfx.zone();
+        showBanner(`Bölge ${zoneLevel + 1}${ZONES[zoneIdx].lowGravity ? ' · düşük yerçekimi' : ''}`, ZONES[zoneIdx].name, ZONES[zoneIdx].css); sfx.zone();
       }
       if (!boss && bossDoneLevel !== zoneLevel && dist - zoneLevel * ZONE_LEN >= BOSS_AT) startBoss();
       if (boss) updateBoss(dt);
     }
     blendZone(ZONES[zoneIdx], Math.min(1, dt * 1.2));
+    updateFx(state === 'paused' ? 0 : dt, dz, ZONES[zoneIdx]);
 
     lineTex.offset.y += dz / 10;
     gridTex.offset.y += dz / 5;
@@ -1621,8 +2108,9 @@ kbd {
     // Player physics
     if (state !== 'paused') {
       px += (LANES[lane] - px) * Math.min(1, dt * 14);
-      if (!grounded) {
-        vy -= (flying ? GLIDE_GRAVITY : GRAVITY) * dt;
+      if (falling) { vy -= GRAVITY * dt; py += vy * dt; }
+      else if (!grounded) {
+        vy -= (flying ? GLIDE_GRAVITY : GRAVITY) * (ZONES[zoneIdx].lowGravity ? 0.6 : 1) * dt;
         py += vy * dt;
         if (py <= 0) { py = 0; vy = 0; grounded = true; if (flying) { flying = false; shake = Math.max(shake, 0.15); } }
       }
@@ -1638,13 +2126,14 @@ kbd {
     ball.position.set(px, py + BALL_R * ball.scale.y, 0);
     ball.rotation.x -= dz / BALL_R;
     ball.rotation.z = (LANES[lane] - px) * -0.25;
-    ball.visible = state !== 'over';
+    ball.visible = state !== 'over' || (falling && py > -10);
     ballCenter.set(px, py + h / 2, 0);
     ballLight.position.set(px, py + 1.2, 0.5);
     shadow.position.x = px;
     const sh = Math.max(0.2, 1 - py / 6);
     shadow.scale.set(sh, sh, sh);
-    shadow.visible = ball.visible;
+    shadow.visible = ball.visible && !falling;
+    ballMat.emissiveIntensity = abilityT > 0 ? 1.1 : 0.55;
     shieldBubble.visible = shield && ball.visible;
     shieldBubble.position.copy(ball.position);
     shieldBubble.rotation.y += dt * 1.5; shieldBubble.rotation.x += dt * 0.7;
@@ -1654,6 +2143,7 @@ kbd {
     magnetRing.scale.set(pulse, pulse, pulse);
 
     updateTrail(state === 'paused' ? 0 : dt, dz, ball.visible && moving);
+    if (state !== 'play' && state !== 'paused') ghostGroup.visible = false;
 
     const targetFov = baseFov + (pw.slow > 0 ? 6 : 0) + (flying ? 4 : 0);
     if (Math.abs(camera.fov - targetFov) > 0.05) {
@@ -1663,7 +2153,7 @@ kbd {
 
     if (playing && dist >= nextSpawnAt) {
       const kind = spawnRow();
-      if (kind !== 'ramp') nextSpawnAt = dist + rand(0.9, 1.3) * (11 + speed * 0.5);
+      if (kind !== 'ramp' && kind !== 'long') nextSpawnAt = dist + rand(0.9, 1.3) * (11 + speed * 0.5);
     }
 
     // Entities
@@ -1678,12 +2168,33 @@ kbd {
         e.pivot.rotation.z = th;
         e.center.set(m.position.x + 5.2 * Math.sin(th), 6 - 5.2 * Math.cos(th), m.position.z);
       }
+      if (e.kind === 'tornado') { m.position.x = e.amp * Math.sin(e.phase + clock * e.w); m.rotation.y += dt * 6; }
+      if (e.kind === 'jelly') {
+        m.position.y = 1.5 + 1.1 * Math.sin(e.phase + clock * 2.4);
+        e.center.copy(m.position);
+      }
+      if (e.kind === 'meteor') {
+        if (!e.landed && moving) {
+          e.rock.position.y -= e.fall * timeScale * dt;
+          e.rock.rotation.x += dt * 3; e.rock.rotation.z += dt * 2;
+          if (e.rock.position.y <= 0.8) {
+            e.rock.position.y = 0.8; e.landed = true; e.mark.visible = false;
+            burst(new THREE.Vector3(m.position.x, 0.5, m.position.z), 0xd27bff, 16, 8);
+            if (m.position.z > -60) shake = Math.max(shake, 0.15);
+          }
+        }
+        e.center.set(m.position.x, e.rock.position.y, m.position.z);
+      }
+      if (e.kind === 'trigger') {
+        if (m.position.z > 0) { const f = e.onPass; e.onPass = null; removeEntity(e); if (playing && f) f(); }
+        continue;
+      }
       const z = m.position.z;
       if (PICKUPS.has(e.kind)) {
         m.rotation.y += dt * 3;
         m.position.y += Math.sin(performance.now() / 250 + z) * 0.004;
       }
-      if (z > 12) { removeEntity(e); continue; }
+      if (z - (e.len || 0) / 2 > 12) { removeEntity(e); continue; }
       if (!playing) continue;
 
       if (e.kind === 'crystal' && pw.magnet > 0 && z > -16 && z < 1.5) {
@@ -1701,6 +2212,9 @@ kbd {
         }
       } else if (e.r) {
         if (e.center.distanceTo(ballCenter) < e.r + (ducking ? 0.3 : 0.45)) { if (hitObstacle(e)) break; }
+      } else if (e.gap) {
+        if (grounded && invulnT <= 0 && !(abilityT > 0 && abilityKind === 'lava') &&
+            Math.abs(LANES[e.lane] - px) < 0.8 && Math.abs(z) < e.len / 2 - 0.25) { if (fallInto(e)) break; }
       } else if (e.kind === 'ramp') {
         if (grounded && Math.abs(LANES[e.lane] - px) < 0.9 && Math.abs(z) < 0.9) launch();
       } else if (PICKUPS.has(e.kind)) {
@@ -1738,6 +2252,7 @@ kbd {
 
     if (playing) {
       run.dist = dist; run.crystals = crystals; run.zone = zoneLevel + 1;
+      updateGhost(dt);
       checkProgress();
 
       ui.score.textContent = Math.floor(score);
@@ -1752,6 +2267,9 @@ kbd {
         ui.comboBar.style.width = `${(comboT / COMBO_WINDOW) * 100}%`;
       }
       ui.chips.shield.hidden = !shield;
+      ui.abilityFill.style.width = `${abilityT > 0 ? (abilityT / abilityMax) * 100 : energy}%`;
+      ui.abilityBtn.classList.toggle('ready', energy >= 100);
+      ui.abilityBtn.classList.toggle('active', abilityT > 0);
       for (const k in pw) {
         ui.chips[k].hidden = pw[k] <= 0;
         if (pw[k] > 0) ui.chips[k].querySelector('i').style.width = `${(pw[k] / pwMax[k]) * 100}%`;
@@ -1763,6 +2281,7 @@ kbd {
   applySkin(skin);
   setMusic(musicOn);
   renderMenu();
+  setGhost(ghostOn);
   selectTab(store.get('kehribar-tab', 'play'));
 
   let last = performance.now();
@@ -1782,8 +2301,11 @@ kbd {
     get run() { return run; }, get boss() { return !!boss; }, get py() { return py; }, get missions() { return missions; },
     startRun, jumpTo(d) { dist = d; nextSpawnAt = d; },
     give(k) { if (k === 'shield') shield = true; else { pwMax[k] = powerDuration(k); pw[k] = pwMax[k]; } },
-    spawn(kind, l = 1, z = -40) { return addEntity(kind, l, z); }, setLane(l) { lane = l; },
-    addBank(n) { addBank(n); renderMenu(); }
+    spawn(kind, l = 1, z = -40, opts = {}) { return addEntity(kind, l, z, 0, opts); }, setLane(l) { lane = l; },
+    addBank(n) { addBank(n); renderMenu(); },
+    fork: () => spawnFork(), bridge: () => spawnBridge(), special: k => spawnSpecial(k),
+    charge() { energy = 100; }, useAbility, setSkin(id) { skin = id; applySkin(id); },
+    get falling() { return falling; }, get energy() { return energy; }, get ghost() { return !!ghostData; }
   };
 })();
 </script>

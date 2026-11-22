@@ -13,6 +13,7 @@ Three.js ile yazılmış, tarayıcıda çalışan 3D sonsuz koşu oyunu. Tek dos
 | ↓ (S) | Eğil, havadayken hızlı in |
 | P / Esc | Duraklat |
 | M | Müziği aç / kapat |
+| E / Shift | Topun yeteneği |
 
 Dokunmatik: sağa/sola kaydır şerit, yukarı kaydır ya da dokun zıpla, aşağı kaydır eğil.
 
@@ -35,7 +36,31 @@ Dokunmatik: sağa/sola kaydır şerit, yukarı kaydır ya da dokun zıpla, aşa�
 Kristalleri 2 saniye içinde art arda topla. Her 5 kristalde çarpan bir artar (en fazla x5).
 
 ## Bölgeler
-Her 1000 metrede yeni bölge: Gün Batımı → Gece Mavisi → Buz Vadisi → Lav Kanyonu. Her bölgenin renkleri, engel dağılımı ve müzik tonu farklıdır.
+Her 1000 metrede yeni bölge, yedi bölge döngüsü:
+Gün Batımı → Gece Mavisi → Çöl Fırtınası → Buz Vadisi → Sualtı → Lav Kanyonu → Uzay Boşluğu.
+Her bölgenin renkleri, engel dağılımı, müzik tonu ve hava efekti (kum, kar, kabarcık, kül, yıldız) farklıdır.
+- **Çöl Fırtınası**: üç şeridi süpüren kum hortumu
+- **Sualtı**: inip çıkan denizanaları
+- **Uzay Boşluğu**: işaretli şeride düşen meteorlar, düşük yerçekimi
+
+## Çatallanan yollar ve köprüler
+- Yol arada ortadaki uzun bir duvarla ikiye ayrılır. Tabela riskli ve güvenli tarafı gösterir. Riskli tarafta blok, bariyer ve küçük uçurumlar arasında bolca kristal var; güvenli taraf sakin.
+- Uçurumlarda tek şeritte raylı köprü kalır, art arda köprüler şerit değiştirir. Uçuruma düşmek koşuyu bitirir (kalkan bir kez seni sektirir).
+
+## Yetenekler
+Her kristal enerji çubuğunu %4 doldurur (Gözcü'yü atlatmak %40). Dolunca `E` / `Shift` ya da alttaki düğme:
+| Top | Yetenek |
+| --- | --- |
+| Kehribar | Nova: öndeki 30 m engeli patlatır |
+| Buz | Dondur: zaman 4 sn neredeyse durur |
+| Lav | Erit: 5 sn engelleri eritir, uçurumda süzülür |
+| Zümrüt | Hasat: üç şeride kristal yağar, 6 sn mıknatıs |
+| Nebula | Işınlan: 40 m ileri |
+| Altın | Midas: öndeki engeller kristale döner, 6 sn x3 kristal |
+
+## Hayalet ve istatistikler
+En iyi koşun kaydedilir ve sonraki koşularda yarı saydam "REKOR" hayaleti olarak yanında koşar; sağ üstte kaç metre önde/geride olduğu yazar. Günlük meydan okumada o günün en iyi koşusu hayalettir. Menüden kapatılabilir.
+İstatistik sekmesi: toplam koşu, mesafe, kristal, zıplama, Gözcü, yetenek, oyun süresi, en sevdiğin top ve en çok neye çarptığın.
 
 ## Gözcü (boss)
 Her bölgenin 760. metresinde Gözcü gelir. 11 saniye boyunca şeritlere ateş eder; önce şerit kırmızı yanıp söner, sonra küre gelir. Hayatta kalırsan bonus kristal ve 250 puan.
