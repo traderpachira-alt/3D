@@ -751,6 +751,14 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
   const DEFAULT_SETTINGS = { quality: isTouch ? 'mid' : 'high', bloom: true, lines: true, shake: 1, vol: 80, music: 70, sfx: 90, cvd: false, curves: 'full' };
   let settings = Object.assign({}, DEFAULT_SETTINGS, store.get('kehribar-settings', {}));
+  // Builds before this one switched curves off after crashes that turned out to be a different bug (frozen cloud data)
+  function migrateSettings() {
+    if (settings.migrated >= 2) return false;
+    settings.migrated = 2;
+    if (settings.curves === 'off') { settings.curves = 'full'; return true; }
+    return false;
+  }
+  if (migrateSettings()) { try { localStorage.setItem('kehribar-settings', JSON.stringify(settings)); } catch {} }
 
   // ---------- Random: Math.random normally, seeded by date in the daily challenge ----------
   function mulberry32(a) {
@@ -2582,7 +2590,8 @@ vec3 bendDir(vec3 n, float d) {
       const w = p.modeRec.weekly;
       if (w && w.week === weekId() && (!modeRec.weekly || modeRec.weekly.week !== w.week || w.best > modeRec.weekly.best)) modeRec.weekly = { week: w.week, best: Number(w.best) || 0 };
     }
-    if (p.settings) settings = Object.assign({}, DEFAULT_SETTINGS, p.settings);
+    const settingsNeedPush = !(p.settings && p.settings.migrated >= 2);
+    if (p.settings) { settings = Object.assign({}, DEFAULT_SETTINGS, p.settings); migrateSettings(); }
     if (typeof p.musicOn === 'boolean') musicOn = p.musicOn;
     if (typeof p.ghostOn === 'boolean') ghostOn = p.ghostOn;
     store.set('kehribar-best', best); store.set('kehribar-bank', bank); store.set('kehribar-owned', owned);
@@ -2593,6 +2602,7 @@ vec3 bendDir(vec3 n, float d) {
     applySkin(skin); applySettings(); setMusic(musicOn); setGhost(ghostOn);
     fillMissions(); renderMenu();
     onSyncedWrite = hold;
+    if (settingsNeedPush) markDirty();
   }
   function withTimeout(p, ms) {
     return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), ms))]);
@@ -2610,7 +2620,7 @@ vec3 bendDir(vec3 n, float d) {
       cloud.ref = db.doc(`data/users/${uid}/progress`);
       const snap = await withTimeout(cloud.ref.get(), 10000);
       cloud.ready = true;
-      const p = snap.exists ? snap.data() : null;
+      const p = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : null;   // snapshots are frozen: copy before the game edits them
       if (p && (p.updatedAt || 0) > localUpdated) {
         applyProgress(p);
         localUpdated = p.updatedAt;
@@ -3459,10 +3469,11 @@ vec3 bendDir(vec3 n, float d) {
     const detail = describeError(f.e, f.where);
     try { localStorage.setItem('kehribar-lasterr', JSON.stringify({ t: Date.now(), detail })); } catch {}
     let lead = 'Oyun her karede aynı hatayı verdi ve menüye döndü.';
-    if (settings.curves !== 'off') {
+    const bendRelated = /path|bend|worldfixed|patchscene|renderer|composer|çizim/i.test(String(f.e && f.e.stack || '') + ' ' + f.where);
+    if (bendRelated && settings.curves !== 'off') {
       settings.curves = 'off'; store.set('kehribar-settings', settings);
       try { applySettings(); } catch {}
-      lead += ' Güvenlik için virajlar ve ters dönüşler kapatıldı. Ayarlar\'dan tekrar açabilirsin.';
+      lead += ' Hata yolla ilgili göründüğü için virajlar ve ters dönüşler kapatıldı. Ayarlar\'dan tekrar açabilirsin.';
     }
     if (state !== 'menu') toMenu();
     showErrorPanel('Bir hata oluştu', lead, detail);

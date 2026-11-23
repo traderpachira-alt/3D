@@ -113,8 +113,11 @@ Yol artık düz değil. Oyun mantığı (şeritler, çarpışmalar) düz bir pis
 | Haftalık mutasyon | Haftaya göre değişen kural: Ay yürüyüşü (yarı yerçekimi), Kristal yağmuru, Karanlık hat (kısa görüş), Kalabalık yol (her sırada iki şerit kapalı). Harita herkes için aynıdır. |
 Her mod için en iyi puan saklanır (hesap kaydıyla senkronlanır).
 
+## Hesap verisi salt okunur gelir
+Claude hesabından okunan kayıt (db anlık görüntüsü) dondurulmuş nesnelerdir. Oyun bu veriyi (görevler, istatistikler, günlük kayıt) değiştirdiği için, kayıt yüklenmiş bir oyunda görev tamamlanınca `Attempted to assign to readonly property` hatası her karede tekrarlanıyordu. Kayıt artık okunur okunmaz düz bir kopyaya çevrilir.
+
 ## Hata kurtarma ve güvenli mod
-- Oyun döngüsünde bir hata olursa oyun durmaz; ekranda kısa bir "Hata" bildirimi çıkar. Aynı hata her karede tekrarlanırsa oyun menüye döner, bir hata paneli (mesaj, yığın, mesafe, yol durumu, cihaz bilgisi) gösterir ve virajları güvenlik için kapatır. Ayarlar'dan tekrar açılabilir.
+- Oyun döngüsünde bir hata olursa oyun durmaz; ekranda kısa bir "Hata" bildirimi çıkar. Aynı hata her karede tekrarlanırsa oyun menüye döner, bir hata paneli (mesaj, yığın, mesafe, yol durumu, cihaz bilgisi) gösterir ve hata yol ya da çizimle ilgiliyse virajları güvenlik için kapatır. Ayarlar'dan tekrar açılabilir.
 - Oyun sırasında sayfa yakalanamayan bir çökmeyle kapanırsa (ör. telefonda bellek), bir sonraki açılışta "Önceki oturum kapandı" paneli çıkar ve yine virajlar kapatılır.
 - Virajlar kapalıyken çizim eski, düz yoldaki gibi çalışır (bükme gölgelendiricisi hiç devreye girmez).
 
