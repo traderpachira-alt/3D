@@ -333,6 +333,11 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
 .storybar span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--mist-dim); }
 .storybar .bar { width: min(240px, 50vw); height: 4px; background: rgba(207, 227, 234, .15); }
 .storybar .bar i { display: block; height: 100%; background: var(--amber); }
+.errtext {
+  font: 11px/1.45 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere;
+  user-select: text; -webkit-user-select: text; max-height: 38vh; overflow: auto;
+  background: rgba(7, 26, 38, .7); padding: 10px; margin: 0; color: var(--mist);
+}
 .touch-only { display: none; }
 @media (hover: none) and (pointer: coarse) {
   .touch-only { display: block; }
@@ -609,6 +614,16 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
 
 <div class="countdown" id="countdown" hidden>3</div>
 
+<div class="overlay" id="errMenu" hidden style="z-index: 50; background: rgba(7, 26, 38, .94)">
+  <div class="card">
+    <p class="eyebrow" id="errEyebrow">Hata kaydı</p>
+    <h2 id="errTitle" style="color:var(--coral)">Bir hata oluştu</h2>
+    <p id="errLead"></p>
+    <pre class="errtext" id="errText"></pre>
+    <button class="btn" id="errDone" type="button">Tamam</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
@@ -837,8 +852,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   // A vertex shader bends that space along a path (yaw + roll) and the camera rides the same path,
   // so turns, hairpins and upside-down sections feel like a first-person ride.
   const PATH_N = 64, PATH_STEP = 3, PATH_D0 = -24, PATH_BALL = Math.round(-PATH_D0 / PATH_STEP);
-  const pathVecs = Array.from({ length: PATH_N }, () => new THREE.Vector4());
-  const bendUniforms = { uPath: { value: pathVecs }, uPathInfo: { value: new THREE.Vector3(PATH_D0, 1 / PATH_STEP, PATH_N - 1) } };
+  const pathData = new Float32Array(PATH_N * 4);      // per sample: x, z, yaw, roll (relative to the ball)
+  const bendUniforms = { uPath: { value: pathData }, uPathInfo: { value: new THREE.Vector3(PATH_D0, 1 / PATH_STEP, PATH_N - 1) } };
   const path = { x: [0], z: [0], yaw: [0], roll: [0], seg: null, mode: 'off', zen: false, rng: Math.random, inv: false, invSince: 0, events: [] };
   const ballWorld = { x: 0, z: 0 };
   const camLocal = new THREE.Vector3(0, 4, 7);
@@ -908,7 +923,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     ballWorld.x = _p0[0]; ballWorld.z = _p0[1];
     for (let i = 0; i < PATH_N; i++) {
       pathAt(dist + PATH_D0 + i * PATH_STEP, _pa);
-      pathVecs[i].set(_pa[0] - _p0[0], _pa[1] - _p0[1], _pa[2], _pa[3]);
+      const o = i * 4;
+      pathData[o] = _pa[0] - _p0[0]; pathData[o + 1] = _pa[1] - _p0[1]; pathData[o + 2] = _pa[2]; pathData[o + 3] = _pa[3];
     }
   }
   // Same maths as bendPos() in the shader, for the camera and lights
@@ -916,8 +932,9 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     let t = (-z - PATH_D0) / PATH_STEP, ext = 0;
     const tmax = PATH_N - 1;
     if (t < 0) { ext = t * PATH_STEP; t = 0; } else if (t > tmax) { ext = (t - tmax) * PATH_STEP; t = tmax; }
-    const i = Math.min(Math.floor(t), tmax - 1), f = t - i, a = pathVecs[i], b = pathVecs[i + 1];
-    const bx = a.x + (b.x - a.x) * f, bz = a.y + (b.y - a.y) * f, yaw = a.z + (b.z - a.z) * f, roll = a.w + (b.w - a.w) * f;
+    const i = Math.min(Math.floor(t), tmax - 1), f = t - i, o = i * 4, d = pathData;
+    const bx = d[o] + (d[o + 4] - d[o]) * f, bz = d[o + 1] + (d[o + 5] - d[o + 1]) * f;
+    const yaw = d[o + 2] + (d[o + 6] - d[o + 2]) * f, roll = d[o + 3] + (d[o + 7] - d[o + 3]) * f;
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cr = Math.cos(roll), sr = Math.sin(roll);
     out.set(bx - sy * ext + cy * cr * x - cy * sr * y, sr * x + cr * y, bz - cy * ext - sy * cr * x + sy * sr * y);
     return out;
@@ -980,6 +997,7 @@ vec3 bendDir(vec3 n, float d) {
     shader.vertexShader = v;
   }
   function patchScene() {
+    if (settings.curves === 'off' && path.mode === 'off') return;
     scene.traverse(o => {
       const m = o.material;
       if (!m || Array.isArray(m) || m.userData.noBend) return;
@@ -1038,7 +1056,7 @@ vec3 bendDir(vec3 n, float d) {
     sun.lookAt(camera.position);
     ridgeGroup.position.set(camera.position.x, 0, camera.position.z);
     ground.position.set(Math.round(ballWorld.x / 10) * 10 - ballWorld.x, -0.02, Math.round(ballWorld.z / 5) * 5 - ballWorld.z);
-    gridMat.opacity = 0.35 * Math.max(0, Math.min(1, Math.cos(pathVecs[PATH_BALL].w) * 1.6));   // fades while the road is upside down
+    gridMat.opacity = 0.35 * Math.max(0, Math.min(1, Math.cos(pathData[PATH_BALL * 4 + 3]) * 1.6));   // fades while the road is upside down
   }
 
   const pylons = [];
@@ -1891,7 +1909,7 @@ vec3 bendDir(vec3 n, float d) {
     finishSpawned = false;
     if (story) { zoneIdx = story.def.zone; blendZone(ZONES[zoneIdx], 1); }
     shield = upgrades.shield > 0 && mode !== 'rush';
-    state = 'play';
+    state = 'play'; crumb(true);
     hideOverlays();
     ui.hud.hidden = false; ui.pauseBtn.hidden = false; ui.powers.hidden = false; ui.abilityBtn.hidden = false;
     ui.storybar.hidden = !(story || mode === 'time' || mode === 'zen'); ui.raceList.hidden = !raceMode;
@@ -1912,6 +1930,7 @@ vec3 bendDir(vec3 n, float d) {
   }
 
   function toMenu() {
+    crumb(false);
     if (state === 'paused') { recordStats(null); finishRun(); }
     if (raceMode && mp.race) mp.race.r.presence({ phase: 'lobby' }).catch(() => {});
     resetRunState();
@@ -1941,9 +1960,9 @@ vec3 bendDir(vec3 n, float d) {
   }
   function gameOver(cause) {
     if (state === 'over' || state === 'won') return;
-    state = 'over';
+    state = 'over'; crumb(false);
     setTimeout(showOverMenu, 650);                    // scheduled first, so a failure below cannot hide it
-    try { gameOverBody(cause); } catch (e) { reportError(e, 'gameOver'); }
+    try { gameOverBody(cause); } catch (e) { reportError(e, 'gameOver', true); }
   }
   function gameOverBody(cause) {
     if (cause === 'gap') sfx.fall();
@@ -2308,7 +2327,7 @@ vec3 bendDir(vec3 n, float d) {
   }
   function winLevel() {
     if (state !== 'play' || !story) return;
-    state = 'won';
+    state = 'won'; crumb(false);
     sfx.win(); flashScreen(ZONES[zoneIdx].css);
     const d = story.def, i = story.idx;
     const stars = 1 + (crystals >= d.n2 ? 1 : 0) + (crystals >= d.n3 ? 1 : 0);
@@ -3299,14 +3318,15 @@ vec3 bendDir(vec3 n, float d) {
       camera.position.y += (Math.random() - 0.5) * shake * settings.shake;
     }
     bendInto(camX * 0.4, lookY, -9, tmp);
-    const cp = pathVecs[PATH_BALL];
-    camera.up.set(-Math.cos(cp.z) * Math.sin(cp.w), Math.cos(cp.w), Math.sin(cp.z) * Math.sin(cp.w));
+    const cyaw = pathData[PATH_BALL * 4 + 2], croll = pathData[PATH_BALL * 4 + 3];
+    camera.up.set(-Math.cos(cyaw) * Math.sin(croll), Math.cos(croll), Math.sin(cyaw) * Math.sin(croll));
     camera.lookAt(tmp);
     updateWorldFixed();
     updateSpeedLines(dt, dz);
     updateOpponents(dt);
 
     if (playing && state === 'play') {
+      crumbT -= dt; if (crumbT <= 0) { crumbT = 3; crumb(true); }
       run.dist = dist; run.crystals = crystals; run.zone = zoneLevel + 1;
       updateGhost(dt);
       checkProgress();
@@ -3360,27 +3380,81 @@ vec3 bendDir(vec3 n, float d) {
   setGhost(ghostOn);
   selectTab(store.get('kehribar-tab', 'play'));
   onSyncedWrite = markDirty;
+  checkAbnormalExit();
   initCloud();
   initRoom();
 
   let last = performance.now();
-  let errCount = 0, errBurst = 0, errWindow = 0, faultN = 0;
-  function reportError(e, where) {
+  let errCount = 0, errBurst = 0, errWindow = 0, faultN = 0, firstErr = null, crumbT = 0;
+  const IGNORED_ERRORS = /ResizeObserver|^Script error/i;
+
+  function showErrorPanel(title, lead, detail, eyebrow) {
+    $('errEyebrow').textContent = eyebrow || 'Hata kaydı';
+    $('errTitle').textContent = title; $('errLead').textContent = lead; $('errText').textContent = detail;
+    $('errMenu').hidden = false;
+    try { $('errDone').focus(); } catch {}
+  }
+  $('errDone').addEventListener('click', () => { $('errMenu').hidden = true; });
+
+  function describeError(e, where) {
+    const stack = e && e.stack ? String(e.stack).split('\n').slice(0, 5).join('\n') : '';
+    let gl2 = '?'; try { gl2 = renderer.capabilities.isWebGL2; } catch {}
+    return [
+      `${where}: ${(e && e.message) || e}`, stack,
+      `durum=${state} mod=${modeKey} mesafe=${Math.round(dist)} m yol=${path.mode} yaw=${pathData[PATH_BALL * 4 + 2].toFixed(2)} roll=${pathData[PATH_BALL * 4 + 3].toFixed(2)}`,
+      `kalite=${settings.quality} dpr=${window.devicePixelRatio} ekran=${window.innerWidth}x${window.innerHeight} webgl2=${gl2}`,
+      navigator.userAgent
+    ].filter(Boolean).join('\n');
+  }
+  // The same fault every frame: record it, switch the winding road off (safe mode) and go back to the menu
+  function crashRecover(f) {
+    const detail = describeError(f.e, f.where);
+    try { localStorage.setItem('kehribar-lasterr', JSON.stringify({ t: Date.now(), detail })); } catch {}
+    let lead = 'Oyun her karede aynı hatayı verdi ve menüye döndü.';
+    if (settings.curves !== 'off') {
+      settings.curves = 'off'; store.set('kehribar-settings', settings);
+      try { applySettings(); } catch {}
+      lead += ' Güvenlik için virajlar ve ters dönüşler kapatıldı. Ayarlar\'dan tekrar açabilirsin.';
+    }
+    if (state !== 'menu') toMenu();
+    showErrorPanel('Bir hata oluştu', lead, detail);
+  }
+  function reportError(e, where, soft) {
     try {
+      const msg = String((e && e.message) || e);
+      if (IGNORED_ERRORS.test(msg)) return;
       console.error(where, e);
       errCount++;
+      if (errCount <= 3) toast(`Hata (${where})`, msg.slice(0, 110), 'var(--coral)');
+      if (soft) return;                                // only errors inside the frame loop can reset the game
       const now = performance.now();
-      if (now - errWindow > 2000) { errWindow = now; errBurst = 0; }
+      if (now - errWindow > 2000) { errWindow = now; errBurst = 0; firstErr = { e, where }; }
       errBurst++;
-      if (errCount <= 3) toast(`Hata (${where})`, String((e && e.message) || e).slice(0, 110), 'var(--coral)');
-      if (errBurst > 40) {                             // the same fault every frame: reset to the menu instead of freezing
-        errBurst = 0; errWindow = now;
-        if (state !== 'menu') toMenu();
-      }
+      if (errBurst > 40) { errBurst = 0; errWindow = now; crashRecover(firstErr || { e, where }); }
     } catch {}
   }
-  window.addEventListener('error', ev => reportError(ev.error || ev.message, 'betik'));
-  window.addEventListener('unhandledrejection', ev => reportError(ev.reason, 'söz'));
+  window.addEventListener('error', ev => reportError(ev.error || ev.message, 'betik', true));
+  window.addEventListener('unhandledrejection', ev => reportError(ev.reason, 'söz', true));
+
+  // Breadcrumb: if the page vanishes mid-run (a crash we cannot catch), the next start notices and turns curves off
+  function crumb(active) {
+    try { localStorage.setItem('kehribar-run', JSON.stringify({ active, mode: modeKey, dist: Math.round(dist), path: path.mode, t: Date.now() })); } catch {}
+  }
+  function checkAbnormalExit() {
+    let prev = null;
+    try { prev = JSON.parse(localStorage.getItem('kehribar-run') || 'null'); } catch {}
+    if (!prev || !prev.active) return;
+    crumb(false);
+    let lead = 'Önceki oyun beklenmedik şekilde kapanmış görünüyor.';
+    if (settings.curves !== 'off' && prev.path && prev.path !== 'off') {
+      settings.curves = 'off'; store.set('kehribar-settings', settings);
+      try { applySettings(); } catch {}
+      lead += ' Güvenlik için virajlar ve ters dönüşler kapatıldı. Ayarlar\'dan tekrar açabilirsin.';
+    }
+    showErrorPanel('Önceki oturum kapandı', lead, `mod=${prev.mode} mesafe=${prev.dist} m yol=${prev.path} saat=${new Date(prev.t).toLocaleTimeString('tr-TR')}`, 'Çökme kaydı');
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) crumb(false); });
+  window.addEventListener('pagehide', () => crumb(false));
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -3414,7 +3488,7 @@ vec3 bendDir(vec3 n, float d) {
     get won() { return state === 'won'; },
     setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
     get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
-    fault(n) { faultN = n; }, get errors() { return errCount; },
+    fault(n) { faultN = n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
     get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();
