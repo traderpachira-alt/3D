@@ -366,6 +366,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     <span class="label">Kristal</span>
     <span class="value crystal" id="crystals">0</span>
     <span class="label" id="speed">14 m/s</span>
+    <span class="label" id="bankHud"></span>
     <span class="label ghost-label" id="ghostLine" hidden></span>
     <ol class="race-list" id="raceList" hidden></ol>
   </div>
@@ -446,6 +447,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
         <span><i style="background:var(--c-slider)"></i>Kayan blok</span>
         <span><i style="background:#c9d6dc"></i>Sarkaç: zıpla</span>
         <span><i style="background:var(--amber)"></i>Rampa: uç</span>
+        <span><i style="background:#9fefff"></i>Cam: kır, kristal verir</span>
         <span><i style="background:#000;outline:1px solid var(--coral)"></i>Uçurum: zıpla ya da köprüden geç</span>
       </div>
       <button class="btn" id="startBtn" type="button">Sonsuz koşu</button>
@@ -698,6 +700,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     { type: 'ramps',    ns: [2, 5],           text: n => `Rampalardan ${n} kez uç` },
     { type: 'bosses',   ns: [1, 2],           text: n => n === 1 ? 'Bir Gözcü\'yü atlat' : `${n} Gözcü atlat` },
     { type: 'zone',     ns: [2, 3],           text: n => `${n}. bölgeye ulaş` },
+    { type: 'glass',   ns: [3, 6],           text: n => `Tek koşuda ${n} cam kır` },
     { type: 'abilities', ns: [1, 3],          text: n => `Tek koşuda ${n} kez yetenek kullan` },
     { type: 'risky',    ns: [1, 2],           text: n => n === 1 ? 'Çatalda riskli yolu seç' : `Riskli yolu ${n} kez seç` }
   ];
@@ -716,6 +719,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     { id: 'daily',     name: 'Her gün',        desc: 'Günlük meydan okumayı oyna', test: r => r.daily && r.dist >= 100 },
     { id: 'collector', name: 'Koleksiyoncu',   desc: 'Tüm topları aç' },
     { id: 'maxed',     name: 'Usta',           desc: 'Bir yükseltmeyi sona çıkar' },
+    { id: 'glass',     name: 'Cam kırıcı',     desc: 'Tek koşuda 5 cam kır',     test: r => r.glass >= 5 },
     { id: 'ghost',     name: 'Kendini geç',    desc: 'Rekor hayaletini geç' },
     { id: 'story',     name: 'Efsane',         desc: 'Hikaye modunu bitir' },
     { id: 'stars',     name: 'Yıldız avcısı',  desc: '30 yıldızın hepsini topla' },
@@ -1299,6 +1303,7 @@ vec3 bendDir(vec3 n, float d) {
     bar: new THREE.BoxGeometry(2.1, 0.42, 0.35),
     post: new THREE.BoxGeometry(0.1, 1.2, 0.1),
     wall: new THREE.BoxGeometry(1.9, 3.2, 1),
+    glass: new THREE.BoxGeometry(1.9, 3.0, 0.28),
     crystal: new THREE.OctahedronGeometry(0.32),
     shield: new THREE.IcosahedronGeometry(0.42, 0),
     magnet: new THREE.TorusGeometry(0.3, 0.1, 10, 20, Math.PI),
@@ -1341,6 +1346,7 @@ vec3 bendDir(vec3 n, float d) {
     ramp: new THREE.MeshStandardMaterial({ map: rampTex, emissive: 0xffffff, emissiveMap: rampTex, emissiveIntensity: 0.6 }),
     rampSide: new THREE.MeshBasicMaterial({ color: COLORS.amber }),
     edge: new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x9fefff, emissive: 0x2fb5c9, emissiveIntensity: 0.35, transparent: true, opacity: 0.38, roughness: 0.1, metalness: 0.2, depthWrite: false }),
     divider: new THREE.MeshStandardMaterial({ color: 0x1b2c4a, emissive: 0x4d6bff, emissiveIntensity: 0.35, transparent: true, opacity: 0.9 }),
     dividerTop: new THREE.MeshBasicMaterial({ color: 0x9fb4ff }),
     gap: new THREE.MeshBasicMaterial({ color: 0x000000 }),
@@ -1352,7 +1358,7 @@ vec3 bendDir(vec3 n, float d) {
     rock: new THREE.MeshStandardMaterial({ color: 0x5a4a6a, emissive: 0xd27bff, emissiveIntensity: 0.25, flatShading: true }),
     marker: new THREE.MeshBasicMaterial({ color: COLORS.coral, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
   };
-  const EDGES = { block: new THREE.EdgesGeometry(GEO.block), wall: new THREE.EdgesGeometry(GEO.wall), slider: new THREE.EdgesGeometry(GEO.slider) };
+  const EDGES = { block: new THREE.EdgesGeometry(GEO.block), wall: new THREE.EdgesGeometry(GEO.wall), slider: new THREE.EdgesGeometry(GEO.slider), glass: new THREE.EdgesGeometry(GEO.glass) };
   const PICKUPS = new Set(['crystal', 'shield', 'magnet', 'double', 'slow']);
 
   // Fork sign: which side is risky
@@ -1401,6 +1407,17 @@ vec3 bendDir(vec3 n, float d) {
       mesh.add(new THREE.LineSegments(EDGES.wall, MAT.edge));
       mesh.position.set(x, 1.6, z);
       e.box = { w: 1.9, d: 1, y0: 0, y1: 3.2 };
+    } else if (kind === 'glass') {
+      // A pane with crystals frozen inside: break it for a reward, at the price of a stumble
+      mesh = new THREE.Mesh(GEO.glass, MAT.glass);
+      mesh.add(new THREE.LineSegments(EDGES.glass, MAT.edge));
+      for (let i = 0; i < 3; i++) {
+        const c = new THREE.Mesh(GEO.crystal, MAT.crystal);
+        c.position.set((i - 1) * 0.5, -0.6 + (i % 2) * 0.9 + i * 0.25, 0); c.scale.setScalar(0.8);
+        mesh.add(c);
+      }
+      mesh.position.set(x, 1.5, z);
+      e.box = { w: 1.9, d: 0.5, y0: 0, y1: 3.0 }; e.glass = true;
     } else if (kind === 'pendulum') {
       // Swings across all three lanes; jump over the bob or time the gap.
       mesh = new THREE.Group();
@@ -1566,7 +1583,8 @@ vec3 bendDir(vec3 n, float d) {
     crash: () => tone(160, 0.6, 'sawtooth', 0.14, 40),
     fall: () => tone(420, 0.9, 'sine', 0.12, 60),
     ability: () => seq([392, 523, 784, 1046], 50, 'sawtooth', 0.07, 0.2),
-    ready: () => seq([880, 1320], 80, 'sine', 0.07)
+    ready: () => seq([880, 1320], 80, 'sine', 0.07),
+    glass: () => { tone(1800, 0.12, 'square', 0.05, 600); tone(2600, 0.2, 'triangle', 0.05, 900); }
   };
 
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -1634,6 +1652,12 @@ vec3 bendDir(vec3 n, float d) {
   let storyStars = store.get('kehribar-story', {});
 
   function addBank(n) { bank += n; store.set('kehribar-bank', bank); }
+  // Crystals of the current run are credited as they come (every few seconds, on pause, on exit),
+  // so a crash, a quit or a closed app never loses them
+  function flushBank() {
+    const d = crystals - bankedCrystals;
+    if (d > 0) { bankedCrystals = crystals; addBank(d); }
+  }
   const powerDuration = k => POWER_TIME[k] * (1 + 0.25 * upgrades[k]);
 
   function newMission(exclude) {
@@ -1663,6 +1687,7 @@ vec3 bendDir(vec3 n, float d) {
   let timeScale = 1, falling = false;
   let story = null, raceMode = false, finishSpawned = false, lastMode = 'normal', lastOpts = {};
   let modeKey = 'normal', mut = null, speedCap = MAX_SPEED, accelRate = ACCEL, scoreMul = 1, modeTime = 0;
+  let bankedCrystals = 0, stumbleT = 0;
   let energy = 0, abilityT = 0, abilityMax = 1, abilityKind = null, invulnT = 0;
   const pw = { magnet: 0, double: 0, slow: 0 };
   const pwMax = { magnet: 1, double: 1, slow: 1 };
@@ -1670,7 +1695,7 @@ vec3 bendDir(vec3 n, float d) {
   let runUnlocks = [];
 
   const ui = {
-    hud: $('hud'), score: $('score'), distLine: $('distLine'), crystals: $('crystals'), speed: $('speed'),
+    hud: $('hud'), score: $('score'), distLine: $('distLine'), crystals: $('crystals'), speed: $('speed'), bankHud: $('bankHud'),
     combo: $('combo'), comboMult: $('comboMult'), comboCount: $('comboCount'), comboBar: $('comboBar'),
     bossbar: $('bossbar'), bossFill: $('bossFill'), toasts: $('toasts'),
     powers: $('powers'), chips: { shield: $('chip-shield'), magnet: $('chip-magnet'), double: $('chip-double'), slow: $('chip-slow') },
@@ -1864,13 +1889,13 @@ vec3 bendDir(vec3 n, float d) {
 
   function resetRunState() {
     clearEntities();
-    dist = 0; score = 0; crystals = 0; nextSpawnAt = 30;
+    dist = 0; score = 0; crystals = 0; bankedCrystals = 0; nextSpawnAt = 30;
     lane = 1; px = 0; py = 0; vy = 0; grounded = true; flying = false; duckT = 0; shield = false; shake = 0;
     combo = 0; comboT = 0;
     pw.magnet = pw.double = pw.slow = 0;
     zoneLevel = 0; zoneIdx = 0; bossDoneLevel = -1;
-    run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0, abilities: 0, risky: 0 };
-    energy = 0; abilityT = 0; invulnT = 0; falling = false; timeScale = 1;
+    run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0, abilities: 0, risky: 0, glass: 0 };
+    energy = 0; abilityT = 0; invulnT = 0; falling = false; timeScale = 1; stumbleT = 0;
     runTime = 0; ghostRec = []; ghostNextT = 0; ghostPassed = false; ghostData = null;
     ghostGroup.visible = false; ui.ghostLine.hidden = true;
     runUnlocks = [];
@@ -1930,7 +1955,7 @@ vec3 bendDir(vec3 n, float d) {
   }
 
   function toMenu() {
-    crumb(false);
+    crumb(false); flushBank();
     if (state === 'paused') { recordStats(null); finishRun(); }
     if (raceMode && mp.race) mp.race.r.presence({ phase: 'lobby' }).catch(() => {});
     resetRunState();
@@ -1961,6 +1986,7 @@ vec3 bendDir(vec3 n, float d) {
   function gameOver(cause) {
     if (state === 'over' || state === 'won') return;
     state = 'over'; crumb(false);
+    try { flushBank(); } catch {}
     setTimeout(showOverMenu, 650);                    // scheduled first, so a failure below cannot hide it
     try { gameOverBody(cause); } catch (e) { reportError(e, 'gameOver', true); }
   }
@@ -1976,7 +2002,6 @@ vec3 bendDir(vec3 n, float d) {
     if (counts && ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
     if (isBest) { best = final; store.set('kehribar-best', best); }
     recordModeBest(final);
-    addBank(crystals);
     let dailyNote = '';
     ui.overTitle.textContent = ({ gap: 'Düştün!', time: 'Süre doldu!', zen: 'Yolculuk bitti' })[cause] || 'Çarptın!';
     ui.ghostLine.hidden = true; ghostGroup.visible = false;
@@ -2337,7 +2362,7 @@ vec3 bendDir(vec3 n, float d) {
     recordStats(null);
     const final = Math.floor(score);
     if (final > best) { best = final; store.set('kehribar-best', best); }
-    addBank(crystals + gained * 15);
+    flushBank(); addBank(gained * 15);
     if (i === LEVELS.length - 1) unlock('story');
     if (totalStars() >= 30) unlock('stars');
     finishRun();
@@ -2985,7 +3010,8 @@ vec3 bendDir(vec3 n, float d) {
 
     for (const l of blocked) {
       const r = rng();
-      const kind = r < zone.mix[0] ? 'block' : r < zone.mix[0] + zone.mix[1] ? 'bar' : 'wall';
+      let kind = r < zone.mix[0] ? 'block' : r < zone.mix[0] + zone.mix[1] ? 'bar' : 'wall';
+      if (kind === 'wall' && dist > 250 && rng() < 0.4) kind = 'glass';       // some walls are breakable glass
       addEntity(kind, l, z);
       if (kind === 'block' && rng() < 0.5) addEntity('crystal', l, z, 1.6);
     }
@@ -3002,19 +3028,26 @@ vec3 bendDir(vec3 n, float d) {
 
   // Road splits around a long middle wall: one side dense with obstacles and crystals, the other calm.
   function spawnFork() {
-    const z0 = SPAWN_Z, L = 130;
+    const z0 = SPAWN_Z, L = Math.max(130, Math.min(260, Math.round(speed * 7)));
     const risky = rng() < 0.5 ? 0 : 2, safe = 2 - risky;
     addEntity('divider', 1, z0, 0, { len: L });
     addEntity('sign', 1, z0 + 0.5, 0, { riskySide: risky });
     addEntity('strip', risky, z0, 0, { len: L, color: COLORS.coral });
     addEntity('strip', safe, z0, 0, { len: L, color: COLORS.shield });
-    const step = Math.max(1, speed / 22);
-    for (let d = 16; d < L - 12; d += rand(11, 14) * step) {
+    // You cannot change lane here, so obstacles must be beatable one at a time: a jump keeps you in the
+    // air for ~0.75 s, so leave room to land, look and react (about 1.8 s after a jump, 1.2 s after a duck)
+    const v = Math.max(speed, 16) * 1.15;
+    let prev = null;
+    for (let d = 24; d < L - 16;) {
       const zz = z0 - d, r = rng();
-      if (r < 0.4) { addEntity('block', risky, zz); addEntity('crystal', risky, zz, 1.6); }
-      else if (r < 0.7) addEntity('bar', risky, zz);
+      let kind = r < 0.4 ? 'block' : r < 0.7 ? 'bar' : 'gap';
+      if (prev === 'gap' && kind === 'bar') kind = 'block';
+      if (kind === 'block') { addEntity('block', risky, zz); addEntity('crystal', risky, zz, 1.6); }
+      else if (kind === 'bar') addEntity('bar', risky, zz);
       else addEntity('gap', risky, zz + 1.5, 0, { len: 3 });
       for (let k = 1; k <= 3; k++) addEntity('crystal', risky, zz - 2.6 - k * 1.8);
+      d += Math.max(26, v * (kind === 'bar' ? 1.2 : 1.8)) * (1 + rng() * 0.25);
+      prev = kind;
     }
     for (let d = 25; d < L; d += 32) crystalLine(safe, z0 - d, 2);
     addEntity('trigger', 1, z0 - 20, 0, { onPass: () => {
@@ -3083,6 +3116,19 @@ vec3 bendDir(vec3 n, float d) {
     }
   }
 
+  function breakGlass(e) {
+    removeEntity(e);
+    const c = e.mesh.position.clone();
+    burst(c, 0x9fefff, 26, 9); burst(c, COLORS.crystal, 8, 6);
+    sfx.glass();
+    crystals += 4; run.glass = (run.glass || 0) + 1;
+    score += 40 * scoreMul;
+    addEnergy(8);
+    combo = Math.floor(combo / 2);                    // the impact rattles the combo
+    stumbleT = 0.8; shake = Math.max(shake, 0.3);
+    toast('Cam kırıldı', '+4 kristal · biraz yavaşladın', 'var(--crystal)');
+  }
+
   function hitObstacle(e) {
     if (invulnT > 0) return false;
     if (abilityT > 0 && abilityKind === 'lava' && !e.len) {
@@ -3138,6 +3184,7 @@ vec3 bendDir(vec3 n, float d) {
       if (comboT > 0) { comboT -= dt; if (comboT <= 0) combo = 0; }
       if (abilityT > 0) abilityT = Math.max(0, abilityT - dt);
       if (invulnT > 0) invulnT -= dt;
+      if (stumbleT > 0) stumbleT -= dt;
       if (modeKey === 'time' || modeKey === 'zen') {
         modeTime -= dt;
         if (modeTime <= 0) gameOver(modeKey);
@@ -3145,7 +3192,7 @@ vec3 bendDir(vec3 n, float d) {
     } else if (state === 'menu') {
       speed = 9;
     }
-    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1);
+    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1) * (stumbleT > 0 ? 0.6 : 1);
     const dz = moving ? speed * timeScale * dt : 0;
     if (moving) clock += dt * timeScale;
     if (playing) {
@@ -3278,7 +3325,7 @@ vec3 bendDir(vec3 n, float d) {
         const ex = e.dynamicX ? m.position.x : LANES[e.lane];
         if (Math.abs(z) < e.box.d / 2 + 0.42 && Math.abs(ex - px) < e.box.w / 2 + 0.35 &&
             py < e.box.y1 && py + h > e.box.y0) {
-          if (hitObstacle(e)) break;
+          if (e.glass) breakGlass(e); else if (hitObstacle(e)) break;
         }
       } else if (e.r) {
         if (e.center.distanceTo(ballCenter) < e.r + (ducking ? 0.3 : 0.45)) { if (hitObstacle(e)) break; }
@@ -3326,7 +3373,7 @@ vec3 bendDir(vec3 n, float d) {
     updateOpponents(dt);
 
     if (playing && state === 'play') {
-      crumbT -= dt; if (crumbT <= 0) { crumbT = 3; crumb(true); }
+      crumbT -= dt; if (crumbT <= 0) { crumbT = 3; crumb(true); flushBank(); }
       run.dist = dist; run.crystals = crystals; run.zone = zoneLevel + 1;
       updateGhost(dt);
       checkProgress();
@@ -3353,6 +3400,7 @@ vec3 bendDir(vec3 n, float d) {
       }
       ui.crystals.textContent = crystals;
       ui.speed.textContent = `${Math.round(speed * timeScale)} m/s`;
+      ui.bankHud.textContent = `Kasa ${bank + (crystals - bankedCrystals)}`;
       const showCombo = combo >= 2;
       ui.combo.hidden = !showCombo;
       if (showCombo) {
@@ -3453,8 +3501,8 @@ vec3 bendDir(vec3 n, float d) {
     }
     showErrorPanel('Önceki oturum kapandı', lead, `mod=${prev.mode} mesafe=${prev.dist} m yol=${prev.path} saat=${new Date(prev.t).toLocaleTimeString('tr-TR')}`, 'Çökme kaydı');
   }
-  document.addEventListener('visibilitychange', () => { if (document.hidden) crumb(false); });
-  window.addEventListener('pagehide', () => crumb(false));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { flushBank(); crumb(false); } });
+  window.addEventListener('pagehide', () => { flushBank(); crumb(false); });
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -3488,7 +3536,7 @@ vec3 bendDir(vec3 n, float d) {
     get won() { return state === 'won'; },
     setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
     get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
-    fault(n) { faultN = n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
+    fault(n) { faultN = n; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, len: e.len || 0 })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
     get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();

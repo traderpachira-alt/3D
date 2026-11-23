@@ -21,6 +21,7 @@ Dokunmatik: sağa/sola kaydır şerit, yukarı kaydır ya da dokun zıpla, aşa�
 - **Kırmızı blok**: üzerinden zıpla
 - **Turuncu bariyer**: altından eğilerek geç
 - **Mor duvar**: şerit değiştir
+- **Cam pano**: içinde kristaller donmuş şeffaf bir duvar. Çarpınca kırılır (+4 kristal, +40 puan), seni öldürmez ama ~1 sn yavaşlatır ve kombonu yarıya indirir. İstersen şeridini değiştirip kaçabilirsin. 250 m'den sonra duvarların bir kısmı cam olur.
 - **Pembe kayan blok**: iki şerit arasında gidip gelir, zamanla
 - **Sarkaç**: üç şeridi de süpürür; zıpla ya da boşluğu bekle
 - **Rampa**: üstünden geçince havalanırsın, gökyüzündeki kristal yayını topla
@@ -116,3 +117,9 @@ Her mod için en iyi puan saklanır (hesap kaydıyla senkronlanır).
 - Oyun döngüsünde bir hata olursa oyun durmaz; ekranda kısa bir "Hata" bildirimi çıkar. Aynı hata her karede tekrarlanırsa oyun menüye döner, bir hata paneli (mesaj, yığın, mesafe, yol durumu, cihaz bilgisi) gösterir ve virajları güvenlik için kapatır. Ayarlar'dan tekrar açılabilir.
 - Oyun sırasında sayfa yakalanamayan bir çökmeyle kapanırsa (ör. telefonda bellek), bir sonraki açılışta "Önceki oturum kapandı" paneli çıkar ve yine virajlar kapatılır.
 - Virajlar kapalıyken çizim eski, düz yoldaki gibi çalışır (bükme gölgelendiricisi hiç devreye girmez).
+
+## Kristallerin kasaya geçişi
+Kristaller artık koşu bitmeden, her birkaç saniyede bir ve duraklatınca, menüye dönünce, uygulamayı arka plana atınca kasaya yazılır. Çökme, çıkış ya da menüye dönüş kristal kaybettirmez. Oyun içinde sağ üstte canlı "Kasa" sayacı vardır.
+
+## Riskli yol düzeni
+Çatalda riskli şeritte şerit değiştiremediğin için engeller aralıklı gelir: zıpladıktan sonra yere inip bakmaya zaman kalacak kadar (zıplamadan sonra ~1,8 sn, eğilmeden sonra ~1,2 sn). Çatal hıza göre uzar (130–260 m).
