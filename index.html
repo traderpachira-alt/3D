@@ -874,7 +874,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
   // so turns, hairpins and upside-down sections feel like a first-person ride.
   const PATH_N = 64, PATH_STEP = 3, PATH_D0 = -24, PATH_BALL = Math.round(-PATH_D0 / PATH_STEP);
   const pathData = new Float32Array(PATH_N * 4);      // per sample: x, z, yaw, roll (relative to the ball)
-  const bendUniforms = { uPath: { value: pathData }, uPathInfo: { value: new THREE.Vector3(PATH_D0, 1 / PATH_STEP, PATH_N - 1) } };
+  const bendUniforms = { uPath: { value: pathData }, uPathInfo: { value: new THREE.Vector3(PATH_D0, 1 / PATH_STEP, PATH_N - 1) }, uView: { value: new THREE.Matrix4() } };
   const path = { x: [0], z: [0], yaw: [0], roll: [0], seg: null, mode: 'off', zen: false, rng: Math.random, inv: false, invSince: 0, events: [] };
   const ballWorld = { x: 0, z: 0 };
   const camLocal = new THREE.Vector3(0, 4, 7);
@@ -965,6 +965,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
 #define PATH_N ${PATH_N}
 uniform vec4 uPath[PATH_N];
 uniform vec3 uPathInfo;
+uniform mat4 uView;       // the camera's view matrix: three only uploads viewMatrix for mesh materials
 void bendFrame(float d, out vec3 base, out vec3 fwd, out vec3 rr, out vec3 uu) {
   float t = (d - uPathInfo.x) * uPathInfo.y;
   float ext = 0.0;
@@ -995,24 +996,25 @@ vec3 bendDir(vec3 n, float d) {
   function bendShader(shader) {
     shader.uniforms.uPath = bendUniforms.uPath;
     shader.uniforms.uPathInfo = bendUniforms.uPathInfo;
+    shader.uniforms.uView = bendUniforms.uView;
     let v = shader.vertexShader.replace('#include <common>', '#include <common>\n' + BEND_GLSL);
     if (v.includes('#include <project_vertex>')) {
       v = v.replace('#include <project_vertex>', `
         vec4 mvPosition = vec4( transformed, 1.0 );
         vec4 bentW = modelMatrix * mvPosition;
         bentW.xyz = bendPos( bentW.xyz );
-        mvPosition = viewMatrix * bentW;
+        mvPosition = uView * bentW;
         gl_Position = projectionMatrix * mvPosition;`);
     } else {
       v = v.replace('vec4 mvPosition = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );',
-        'vec4 mvPosition = viewMatrix * vec4( bendPos( ( modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz ), 1.0 );');
+        'vec4 mvPosition = uView * vec4( bendPos( ( modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ) ).xyz ), 1.0 );');
     }
     if (v.includes('#include <defaultnormal_vertex>')) {
       v = v.replace('#include <defaultnormal_vertex>', `#include <defaultnormal_vertex>
         {
-          vec3 bendW = ( vec4( transformedNormal, 0.0 ) * viewMatrix ).xyz;
+          vec3 bendW = ( vec4( transformedNormal, 0.0 ) * uView ).xyz;
           bendW = bendDir( bendW, -( modelMatrix * vec4( position, 1.0 ) ).z );
-          transformedNormal = ( viewMatrix * vec4( bendW, 0.0 ) ).xyz;
+          transformedNormal = ( uView * vec4( bendW, 0.0 ) ).xyz;
         }`);
     }
     shader.vertexShader = v;
@@ -3748,6 +3750,8 @@ vec3 bendDir(vec3 n, float d) {
     last = now;
     try { if (faultN > 0) { faultN--; throw new Error('test hatası'); } update(dt); } catch (e) { reportError(e, 'oyun'); }
     try {
+      camera.updateMatrixWorld();
+      bendUniforms.uView.value.copy(camera.matrixWorldInverse);
       patchScene();
       if (bloomOn()) composer.render(); else renderer.render(scene, camera);
     } catch (e) { reportError(e, 'çizim'); }
@@ -3776,7 +3780,7 @@ vec3 bendDir(vec3 n, float d) {
     get won() { return state === 'won'; },
     setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
     get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
-    fault(n) { faultN = n; }, row: () => spawnRow(), clearEnts() { for (const e of entities) scene.remove(e.mesh); entities = []; }, drone: () => spawnDrone(), laser: () => spawnLaser(), saw: () => spawnSaw(), spikes: () => spawnSpikes(), pad: () => spawnPad(), get boost() { return boostT; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, y: e.mesh.position.y, x: e.mesh.position.x, len: e.len || 0, on: e.on ? e.on.slice() : null, state: e.state || null })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
+    fault(n) { faultN = n; }, get dbg() { return { scene, renderer, trail, trailMat, trailPos, trailCol, tp }; }, row: () => spawnRow(), clearEnts() { for (const e of entities) scene.remove(e.mesh); entities = []; }, drone: () => spawnDrone(), laser: () => spawnLaser(), saw: () => spawnSaw(), spikes: () => spawnSpikes(), pad: () => spawnPad(), get boost() { return boostT; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, y: e.mesh.position.y, x: e.mesh.position.x, len: e.len || 0, on: e.on ? e.on.slice() : null, state: e.state || null })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
     get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();

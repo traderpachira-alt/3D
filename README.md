@@ -131,3 +131,6 @@ Kristaller artık koşu bitmeden, her birkaç saniyede bir ve duraklatınca, men
 
 ## Riskli yol düzeni
 Çatalda riskli şeritte şerit değiştiremediğin için engeller aralıklı gelir: zıpladıktan sonra yere inip bakmaya zaman kalacak kadar (zıplamadan sonra ~1,8 sn, eğilmeden sonra ~1,2 sn). Çatal hıza göre uzar (130–260 m).
+
+## Çizim notu (nokta, çizgi ve etiketler)
+Yol bükme gölgelendiricisi kamera matrisini kendi `uView` değişkeniyle alır. Three.js (r128) `viewMatrix`'i yalnızca mesh malzemelerine yüklediği için, ona güvenen nokta (iz, hava efekti), çizgi (engel kenarları, hız çizgileri) ve etiket (hayalet, rakip adı) nesneleri tek noktaya çöküp görünmez oluyordu.
