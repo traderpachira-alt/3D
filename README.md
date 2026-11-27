@@ -21,6 +21,11 @@ Dokunmatik: sağa/sola kaydır şerit, yukarı kaydır ya da dokun zıpla, aşa�
 - **Kırmızı blok**: üzerinden zıpla
 - **Turuncu bariyer**: altından eğilerek geç
 - **Mor duvar**: şerit değiştir
+- **Lazer kapı** (500 m'den sonra): yolu kesen bir kapı; her şeridin ışını sırayla açılıp kapanır, hep en az bir şerit açıktır. Kapanmadan önce ışın yanıp söner. Kapalı bir ışına girersen ölürsün.
+- **Dönen testere** (350 m'den sonra): sana doğru yerden daha hızlı yuvarlanır (+11 m/s). Zıpla ya da şerit değiştir. 900 m'den sonra bazıları yolda sağa sola zikzak yapar.
+- **Diken şeridi** (150 m'den sonra): bir şeritte 5 m'lik diken; üstünden zıpla. Üstünde kristal dizisi bekler, bazen iki şerit birden dikenli olur.
+- **Avcı dron** (700 m'den sonra): önünde süzülür ve şeridini takip eder. Gözü kırmızıya dönüp ışın verdiği şeride 0,7 sn sonra mayın bırakır; 4–5 mayından kaç. Dron çalışırken yolda başka engel çıkmaz. Hepsini atlatırsan +6 kristal ve +120 puan.
+- **Hızlandırıcı ped** (120 m'den sonra, yeşil oklu): üstüne basınca 1,7 sn boyunca dünya %45 hızlanır; arkasında kristal dizisi vardır.
 - **Cam pano**: içinde kristaller donmuş şeffaf bir duvar. Çarpınca kırılır (+4 kristal, +40 puan), seni öldürmez ama ~1 sn yavaşlatır ve kombonu yarıya indirir. İstersen şeridini değiştirip kaçabilirsin. 250 m'den sonra duvarların bir kısmı cam olur.
 - **Pembe kayan blok**: iki şerit arasında gidip gelir, zamanla
 - **Sarkaç**: üç şeridi de süpürür; zıpla ya da boşluğu bekle

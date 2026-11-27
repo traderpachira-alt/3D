@@ -448,6 +448,11 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
         <span><i style="background:#c9d6dc"></i>Sarkaç: zıpla</span>
         <span><i style="background:var(--amber)"></i>Rampa: uç</span>
         <span><i style="background:#9fefff"></i>Cam: kır, kristal verir</span>
+        <span><i style="background:#ff3b4a"></i>Lazer kapı: açık şeridi bekle</span>
+        <span><i style="background:#c9d6dc"></i>Testere: zıpla ya da kaç</span>
+        <span><i style="background:#b8c4cc"></i>Diken: zıpla</span>
+        <span><i style="background:#ff2d3d"></i>Dron mayını: kırmızı ışıktan kaç</span>
+        <span><i style="background:#9dffb0"></i>Yeşil ped: hızlan</span>
         <span><i style="background:#000;outline:1px solid var(--coral)"></i>Uçurum: zıpla ya da köprüden geç</span>
       </div>
       <button class="btn" id="startBtn" type="button">Sonsuz koşu</button>
@@ -701,6 +706,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     { type: 'bosses',   ns: [1, 2],           text: n => n === 1 ? 'Bir Gözcü\'yü atlat' : `${n} Gözcü atlat` },
     { type: 'zone',     ns: [2, 3],           text: n => `${n}. bölgeye ulaş` },
     { type: 'glass',   ns: [3, 6],           text: n => `Tek koşuda ${n} cam kır` },
+    { type: 'drones',  ns: [1, 2],           text: n => n === 1 ? 'Bir av dronunu atlat' : `${n} av dronu atlat` },
+    { type: 'pads',    ns: [3, 6],           text: n => `Hızlandırıcıya ${n} kez bas` },
     { type: 'abilities', ns: [1, 3],          text: n => `Tek koşuda ${n} kez yetenek kullan` },
     { type: 'risky',    ns: [1, 2],           text: n => n === 1 ? 'Çatalda riskli yolu seç' : `Riskli yolu ${n} kez seç` }
   ];
@@ -719,6 +726,8 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     { id: 'daily',     name: 'Her gün',        desc: 'Günlük meydan okumayı oyna', test: r => r.daily && r.dist >= 100 },
     { id: 'collector', name: 'Koleksiyoncu',   desc: 'Tüm topları aç' },
     { id: 'maxed',     name: 'Usta',           desc: 'Bir yükseltmeyi sona çıkar' },
+    { id: 'drone',     name: 'Dron avcısı',    desc: 'Bir av dronunu atlat',     test: r => r.drones >= 1 },
+    { id: 'boost',     name: 'Nitro',          desc: 'Tek koşuda 5 hızlandırıcı', test: r => r.pads >= 5 },
     { id: 'glass',     name: 'Cam kırıcı',     desc: 'Tek koşuda 5 cam kır',     test: r => r.glass >= 5 },
     { id: 'ghost',     name: 'Kendini geç',    desc: 'Rekor hayaletini geç' },
     { id: 'story',     name: 'Efsane',         desc: 'Hikaye modunu bitir' },
@@ -1312,6 +1321,19 @@ vec3 bendDir(vec3 n, float d) {
     post: new THREE.BoxGeometry(0.1, 1.2, 0.1),
     wall: new THREE.BoxGeometry(1.9, 3.2, 1),
     glass: new THREE.BoxGeometry(1.9, 3.0, 0.28),
+    emitter: new THREE.BoxGeometry(0.3, 1.8, 0.3),
+    beam: new THREE.BoxGeometry(2.1, 1.5, 0.08),
+    sawDisc: new THREE.CylinderGeometry(0.75, 0.75, 0.16, 20),
+    sawTooth: new THREE.BoxGeometry(0.24, 0.3, 0.2),
+    mineBody: new THREE.SphereGeometry(0.4, 14, 10),
+    mineSpike: new THREE.ConeGeometry(0.1, 0.3, 5),
+    mineLight: new THREE.SphereGeometry(0.1, 8, 6),
+    droneBody: new THREE.OctahedronGeometry(0.7),
+    droneRotor: new THREE.TorusGeometry(0.45, 0.05, 6, 16),
+    droneEye: new THREE.SphereGeometry(0.2, 10, 8),
+    droneBeam: new THREE.CylinderGeometry(0.11, 0.11, 3.2, 6),
+    padPlane: new THREE.PlaneGeometry(1.9, 3.0),
+    spikeBase: new THREE.PlaneGeometry(1.9, 5),
     crystal: new THREE.OctahedronGeometry(0.32),
     shield: new THREE.IcosahedronGeometry(0.42, 0),
     magnet: new THREE.TorusGeometry(0.3, 0.1, 10, 20, Math.PI),
@@ -1354,6 +1376,26 @@ vec3 bendDir(vec3 n, float d) {
     ramp: new THREE.MeshStandardMaterial({ map: rampTex, emissive: 0xffffff, emissiveMap: rampTex, emissiveIntensity: 0.6 }),
     rampSide: new THREE.MeshBasicMaterial({ color: COLORS.amber }),
     edge: new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }),
+    emitter: new THREE.MeshStandardMaterial({ color: 0x1b2c4a, emissive: 0xff3b4a, emissiveIntensity: 0.5, roughness: 0.5 }),
+    laserOn: new THREE.MeshBasicMaterial({ color: 0xff3b4a, transparent: true, opacity: 0.85, depthWrite: false }),
+    laserWarn: new THREE.MeshBasicMaterial({ color: 0xff8a8a, transparent: true, opacity: 0.4, depthWrite: false }),
+    laserOff: new THREE.MeshBasicMaterial({ color: 0xff3b4a, transparent: true, opacity: 0.07, depthWrite: false }),
+    saw: new THREE.MeshStandardMaterial({ color: 0xc9d6dc, metalness: 0.8, roughness: 0.3, emissive: 0xff8a3d, emissiveIntensity: 0.35 }),
+    mine: new THREE.MeshStandardMaterial({ color: 0x2a2f3a, emissive: 0x6a1020, emissiveIntensity: 0.6, roughness: 0.5 }),
+    mineLight: new THREE.MeshBasicMaterial({ color: 0xff2d3d }),
+    drone: new THREE.MeshStandardMaterial({ color: 0x1d2433, emissive: 0x3a4a7a, emissiveIntensity: 0.6, flatShading: true }),
+    droneRotor: new THREE.MeshBasicMaterial({ color: 0x9fb4ff }),
+    droneEye: new THREE.MeshBasicMaterial({ color: 0x5ef2ff }),
+    droneEyeAlert: new THREE.MeshBasicMaterial({ color: 0xff2d3d }),
+    droneBeam: new THREE.MeshBasicMaterial({ color: 0xff2d3d, transparent: true, opacity: 0.55, depthWrite: false }),
+    spikes: new THREE.MeshStandardMaterial({ color: 0xb8c4cc, metalness: 0.7, roughness: 0.3, emissive: 0xff5a5f, emissiveIntensity: 0.25 }),
+    spikeBase: new THREE.MeshBasicMaterial({ color: 0x3a1015, transparent: true, opacity: 0.85 }),
+    pad: new THREE.MeshBasicMaterial({ map: canvasTex(64, 128, (g, w, h) => {
+      g.fillStyle = 'rgba(20,60,40,0.85)'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = '#9dffb0'; g.lineWidth = 9; g.lineJoin = 'round';
+      for (let i = 0; i < 3; i++) { const y = 28 + i * 34; g.beginPath(); g.moveTo(10, y + 18); g.lineTo(w / 2, y); g.lineTo(w - 10, y + 18); g.stroke(); }
+      g.strokeStyle = '#9dffb0'; g.lineWidth = 4; g.strokeRect(2, 2, w - 4, h - 4);
+    }), transparent: true, side: THREE.DoubleSide, depthWrite: false }),
     glass: new THREE.MeshStandardMaterial({ color: 0x9fefff, emissive: 0x2fb5c9, emissiveIntensity: 0.35, transparent: true, opacity: 0.38, roughness: 0.1, metalness: 0.2, depthWrite: false }),
     divider: new THREE.MeshStandardMaterial({ color: 0x1b2c4a, emissive: 0x4d6bff, emissiveIntensity: 0.35, transparent: true, opacity: 0.9 }),
     dividerTop: new THREE.MeshBasicMaterial({ color: 0x9fb4ff }),
@@ -1367,6 +1409,24 @@ vec3 bendDir(vec3 n, float d) {
     marker: new THREE.MeshBasicMaterial({ color: COLORS.coral, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
   };
   const EDGES = { block: new THREE.EdgesGeometry(GEO.block), wall: new THREE.EdgesGeometry(GEO.wall), slider: new THREE.EdgesGeometry(GEO.slider), glass: new THREE.EdgesGeometry(GEO.glass) };
+  // One merged mesh for a strip of floor spikes (3 columns x 5 rows) so it costs a single draw call
+  GEO.spikes = (() => {
+    const parts = [];
+    for (let cx = -1; cx <= 1; cx++) for (let rz = -2; rz <= 2; rz++) {
+      const g = new THREE.ConeGeometry(0.2, 0.55, 6).toNonIndexed();
+      g.translate(cx * 0.6, 0.275, rz);
+      parts.push(g);
+    }
+    let n = 0; parts.forEach(g => { n += g.attributes.position.count; });
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+    let o = 0;
+    for (const g of parts) { pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); o += g.attributes.position.count; }
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    merged.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    return merged;
+  })();
+  const closestLane = x => LANES.reduce((best, l, i) => Math.abs(l - x) < Math.abs(LANES[best] - x) ? i : best, 0);
   const PICKUPS = new Set(['crystal', 'shield', 'magnet', 'double', 'slow']);
 
   // Fork sign: which side is risky
@@ -1426,6 +1486,61 @@ vec3 bendDir(vec3 n, float d) {
       }
       mesh.position.set(x, 1.5, z);
       e.box = { w: 1.9, d: 0.5, y0: 0, y1: 3.0 }; e.glass = true;
+    } else if (kind === 'laser') {
+      // A gate across the road; each lane's beam pulses in turn, so there is always one open lane
+      mesh = new THREE.Group();
+      for (let i = 0; i < 4; i++) { const p = new THREE.Mesh(GEO.emitter, MAT.emitter); p.position.set((i - 1.5) * 2.4, 0.9, 0); mesh.add(p); }
+      e.beams = [];
+      for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(GEO.beam, MAT.laserOff); b.position.set(LANES[i], 0.8, 0); mesh.add(b); e.beams.push(b); }
+      e.phase = opts.phase !== undefined ? opts.phase : rand(0, 1); e.period = opts.period || 2.4; e.on = [false, false, false];
+      mesh.position.set(0, 0, z);
+    } else if (kind === 'saw') {
+      // A buzzsaw rolling down the road at you, faster than the ground moves
+      mesh = new THREE.Group();
+      const spin = new THREE.Group(); spin.position.y = 0.8; mesh.add(spin);
+      const disc = new THREE.Mesh(GEO.sawDisc, MAT.saw); disc.rotation.x = Math.PI / 2; spin.add(disc);
+      for (let i = 0; i < 10; i++) {
+        const t = new THREE.Mesh(GEO.sawTooth, MAT.saw), a = i / 10 * Math.PI * 2;
+        t.position.set(Math.cos(a) * 0.82, Math.sin(a) * 0.82, 0); t.rotation.z = a; spin.add(t);
+      }
+      e.spin = spin; e.extra = 11; e.zig = !!opts.zig; e.phase = rand(0, 6.28);
+      mesh.position.set(x, 0, z);
+      e.r = 0.78; e.center = new THREE.Vector3(x, 0.8, z);
+    } else if (kind === 'spikes') {
+      mesh = new THREE.Group();
+      mesh.add(new THREE.Mesh(GEO.spikes, MAT.spikes));
+      const base = new THREE.Mesh(GEO.spikeBase, MAT.spikeBase); base.rotation.x = -Math.PI / 2; base.position.y = 0.02; mesh.add(base);
+      mesh.position.set(x, 0, z);
+      e.box = { w: 1.9, d: 5, y0: 0, y1: 0.55 };
+    } else if (kind === 'pad') {
+      mesh = new THREE.Mesh(GEO.padPlane, MAT.pad);
+      mesh.rotation.x = -Math.PI / 2; mesh.position.set(x, 0.03, z);
+      e.used = false;
+    } else if (kind === 'mine') {
+      // Dropped by a hunter drone: falls, then sits in the lane
+      mesh = new THREE.Group();
+      mesh.add(new THREE.Mesh(GEO.mineBody, MAT.mine));
+      for (const d of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, -1], [0.7, 0.7, 0], [-0.7, 0.7, 0]]) {
+        const sp = new THREE.Mesh(GEO.mineSpike, MAT.mine), v = new THREE.Vector3(d[0], d[1], d[2]).normalize();
+        sp.position.copy(v).multiplyScalar(0.45); sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v); mesh.add(sp);
+      }
+      e.light = new THREE.Mesh(GEO.mineLight, MAT.mineLight); e.light.position.set(0, 0.42, 0); mesh.add(e.light);
+      mesh.position.set(x, opts.fromY || 0.5, z);
+      e.r = 0.5; e.center = mesh.position; e.vy = 0; e.blink = rand(0, 6);
+    } else if (kind === 'drone') {
+      // Hovers ahead, follows your lane, then marks it with a red beam and drops a mine there
+      mesh = new THREE.Group();
+      const rig = new THREE.Group(); rig.scale.setScalar(1.7); mesh.add(rig);       // the body is bigger than the beam under it
+      const body = new THREE.Mesh(GEO.droneBody, MAT.drone); body.scale.set(1.3, 0.55, 1.3); rig.add(body);
+      e.rotors = [];
+      for (const [ox, oz] of [[0.9, 0.9], [-0.9, 0.9], [0.9, -0.9], [-0.9, -0.9]]) {
+        const r = new THREE.Mesh(GEO.droneRotor, MAT.droneRotor); r.rotation.x = Math.PI / 2; r.position.set(ox, 0.15, oz); rig.add(r); e.rotors.push(r);
+      }
+      e.eye = new THREE.Mesh(GEO.droneEye, MAT.droneEye); e.eye.position.set(0, -0.05, 0.8); rig.add(e.eye);
+      e.beam = new THREE.Mesh(GEO.droneBeam, MAT.droneBeam); e.beam.position.y = -1.6; e.beam.visible = false; mesh.add(e.beam);
+      e.ring = new THREE.Mesh(GEO.marker, MAT.marker); e.ring.rotation.x = -Math.PI / 2; e.ring.position.y = -3.15; e.ring.visible = false; mesh.add(e.ring);
+      mesh.position.set(0, 3.2, z);
+      e.t = 0; e.state = 'arrive'; e.drops = 0; e.total = dist > 1500 ? 5 : 4; e.dropT = 1; e.tele = 0; e.beepT = 0;
     } else if (kind === 'pendulum') {
       // Swings across all three lanes; jump over the bob or time the gap.
       mesh = new THREE.Group();
@@ -1592,7 +1707,9 @@ vec3 bendDir(vec3 n, float d) {
     fall: () => tone(420, 0.9, 'sine', 0.12, 60),
     ability: () => seq([392, 523, 784, 1046], 50, 'sawtooth', 0.07, 0.2),
     ready: () => seq([880, 1320], 80, 'sine', 0.07),
-    glass: () => { tone(1800, 0.12, 'square', 0.05, 600); tone(2600, 0.2, 'triangle', 0.05, 900); }
+    glass: () => { tone(1800, 0.12, 'square', 0.05, 600); tone(2600, 0.2, 'triangle', 0.05, 900); },
+    beep: () => tone(1250, 0.06, 'square', 0.04),
+    boost: () => { tone(300, 0.25, 'sawtooth', 0.07, 900); setTimeout(() => tone(900, 0.2, 'triangle', 0.06, 1500), 80); }
   };
 
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -1695,7 +1812,7 @@ vec3 bendDir(vec3 n, float d) {
   let timeScale = 1, falling = false;
   let story = null, raceMode = false, finishSpawned = false, lastMode = 'normal', lastOpts = {};
   let modeKey = 'normal', mut = null, speedCap = MAX_SPEED, accelRate = ACCEL, scoreMul = 1, modeTime = 0;
-  let bankedCrystals = 0, stumbleT = 0;
+  let bankedCrystals = 0, stumbleT = 0, boostT = 0, dz_frame = 0;
   let energy = 0, abilityT = 0, abilityMax = 1, abilityKind = null, invulnT = 0;
   const pw = { magnet: 0, double: 0, slow: 0 };
   const pwMax = { magnet: 1, double: 1, slow: 1 };
@@ -1902,8 +2019,8 @@ vec3 bendDir(vec3 n, float d) {
     combo = 0; comboT = 0;
     pw.magnet = pw.double = pw.slow = 0;
     zoneLevel = 0; zoneIdx = 0; bossDoneLevel = -1;
-    run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0, abilities: 0, risky: 0, glass: 0 };
-    energy = 0; abilityT = 0; invulnT = 0; falling = false; timeScale = 1; stumbleT = 0;
+    run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0, abilities: 0, risky: 0, glass: 0, drones: 0, pads: 0 };
+    energy = 0; abilityT = 0; invulnT = 0; falling = false; timeScale = 1; stumbleT = 0; boostT = 0;
     runTime = 0; ghostRec = []; ghostNextT = 0; ghostPassed = false; ghostData = null;
     ghostGroup.visible = false; ui.ghostLine.hidden = true;
     runUnlocks = [];
@@ -2195,7 +2312,7 @@ vec3 bendDir(vec3 n, float d) {
 
   // ---------- Lifetime statistics ----------
   const DEATH_NAMES = { block: 'Blok', bar: 'Bariyer', wall: 'Duvar', slider: 'Kayan blok', pendulum: 'Sarkaç', orb: 'Gözcü küresi',
-                        gap: 'Uçurum', tornado: 'Kum hortumu', jelly: 'Denizanası', meteor: 'Meteor', divider: 'Ayırıcı duvar', time: 'Süre doldu', zen: 'Yolculuk bitti' };
+                        gap: 'Uçurum', tornado: 'Kum hortumu', jelly: 'Denizanası', meteor: 'Meteor', divider: 'Ayırıcı duvar', time: 'Süre doldu', zen: 'Yolculuk bitti', mine: 'Dron mayını', laser: 'Lazer kapısı', saw: 'Testere', spikes: 'Diken şeridi' };
   let stats = Object.assign({ runs: 0, dist: 0, crystals: 0, jumps: 0, ramps: 0, bosses: 0, abilities: 0, risky: 0, time: 0,
                               bestDist: 0, bestCombo: 0, deaths: {}, skinRuns: {} }, store.get('kehribar-stats', {}));
   function recordStats(cause) {
@@ -2267,7 +2384,7 @@ vec3 bendDir(vec3 n, float d) {
     ui.flash.style.setProperty('--c', color);
     ui.flash.classList.remove('go'); void ui.flash.offsetWidth; ui.flash.classList.add('go');
   }
-  const isObstacle = e => (e.box || e.r || e.gap) && !e.len;   // fork walls and bridge gaps longer than a hop stay put
+  const isObstacle = e => (e.box || e.r || e.gap || e.kind === 'laser') && !e.len;   // fork walls and bridge gaps longer than a hop stay put
   function useAbility() {
     if (state !== 'play' || energy < 100) return;
     energy = 0; run.abilities++;
@@ -2307,23 +2424,24 @@ vec3 bendDir(vec3 n, float d) {
   }
 
   // ---------- Story mode ----------
-  const DEFAULT_GEN = { fork: [300, 0.06], bridge: [250, 0.06], special: [0, 0.2], ramp: [200, 0.09], pendulum: [800, 0.07], slider: [400, 0.14] };
+  const DEFAULT_GEN = { fork: [300, 0.06], bridge: [250, 0.06], special: [0, 0.2], ramp: [200, 0.09], pendulum: [800, 0.07], slider: [400, 0.14],
+    laser: [500, 0.05], saw: [350, 0.06], spikes: [150, 0.06], drone: [700, 0.03], pad: [120, 0.07] };
   const OFF = [9e9, 0];
-  const gen = o => Object.assign({ fork: OFF, bridge: OFF, special: OFF, ramp: OFF, pendulum: OFF, slider: OFF }, o);
-  const ZEN_GEN = gen({ ramp: [0, 0.14] });
+  const gen = o => Object.assign({ fork: OFF, bridge: OFF, special: OFF, ramp: OFF, pendulum: OFF, slider: OFF, laser: OFF, saw: OFF, spikes: OFF, drone: OFF, pad: OFF }, o);
+  const ZEN_GEN = gen({ ramp: [0, 0.14], pad: [0, 0.08] });
   const LEVELS = [
     { name: 'İlk Işık',          zone: 0, len: 600,  seed: 1101, speed: 13, max: 22, n2: 20, n3: 32, gen: gen({ ramp: [150, 0.06] }) },
     { name: 'Rampa Sokağı',      zone: 0, len: 800,  seed: 2203, speed: 14, max: 26, n2: 35, n3: 60, gen: gen({ ramp: [80, 0.25], slider: [300, 0.1] }) },
-    { name: 'Gece Çatalı',       zone: 1, len: 900,  seed: 3307, speed: 15, max: 28, n2: 35, n3: 60, gen: gen({ fork: [150, 0.16], ramp: [200, 0.06], slider: [300, 0.12] }) },
-    { name: 'Kum Fırtınası',     zone: 2, len: 1000, seed: 4409, speed: 15, max: 28, n2: 35, n3: 60, gen: gen({ special: [0, 0.3], ramp: [200, 0.06], bridge: [250, 0.06] }) },
-    { name: 'Buz Köprüleri',     zone: 3, len: 1000, seed: 5501, speed: 16, max: 30, n2: 40, n3: 65, gen: gen({ bridge: [120, 0.2], ramp: [200, 0.06], slider: [300, 0.12] }) },
-    { name: 'Derinlik',          zone: 4, len: 1100, seed: 6607, speed: 16, max: 30, n2: 40, n3: 70, gen: gen({ special: [0, 0.32], slider: [200, 0.16], fork: [300, 0.08] }) },
+    { name: 'Gece Çatalı',       zone: 1, len: 900,  seed: 3307, speed: 15, max: 28, n2: 35, n3: 60, gen: gen({ fork: [150, 0.16], ramp: [200, 0.06], slider: [300, 0.12], spikes: [100, 0.08] }) },
+    { name: 'Kum Fırtınası',     zone: 2, len: 1000, seed: 4409, speed: 15, max: 28, n2: 35, n3: 60, gen: gen({ special: [0, 0.3], ramp: [200, 0.06], bridge: [250, 0.06], saw: [150, 0.09], pad: [100, 0.08] }) },
+    { name: 'Buz Köprüleri',     zone: 3, len: 1000, seed: 5501, speed: 16, max: 30, n2: 40, n3: 65, gen: gen({ bridge: [120, 0.2], ramp: [200, 0.06], slider: [300, 0.12], pad: [80, 0.1], spikes: [150, 0.07] }) },
+    { name: 'Derinlik',          zone: 4, len: 1100, seed: 6607, speed: 16, max: 30, n2: 40, n3: 70, gen: gen({ special: [0, 0.32], slider: [200, 0.16], fork: [300, 0.08], laser: [250, 0.07] }) },
     { name: 'Gözcü\'nün Bekçisi', zone: 1, len: 1200, seed: 7703, speed: 17, max: 32, n2: 45, n3: 75, bossAt: 650,
-      gen: gen({ fork: [300, 0.06], bridge: [250, 0.06], ramp: [200, 0.08], pendulum: [400, 0.07], slider: [200, 0.14] }) },
-    { name: 'Lav Akıntısı',      zone: 5, len: 1300, seed: 8807, speed: 18, max: 34, n2: 50, n3: 85, gen: gen({ pendulum: [200, 0.12], slider: [200, 0.16], bridge: [200, 0.1], ramp: [200, 0.06] }) },
-    { name: 'Meteor Yağmuru',    zone: 6, len: 1400, seed: 9901, speed: 18, max: 36, n2: 55, n3: 90, gen: gen({ special: [0, 0.35], fork: [300, 0.08], ramp: [200, 0.1] }) },
+      gen: gen({ fork: [300, 0.06], bridge: [250, 0.06], ramp: [200, 0.08], pendulum: [400, 0.07], slider: [200, 0.14], drone: [350, 0.05], laser: [300, 0.05] }) },
+    { name: 'Lav Akıntısı',      zone: 5, len: 1300, seed: 8807, speed: 18, max: 34, n2: 50, n3: 85, gen: gen({ pendulum: [200, 0.12], slider: [200, 0.16], bridge: [200, 0.1], ramp: [200, 0.06], saw: [150, 0.1], spikes: [150, 0.08], laser: [300, 0.06] }) },
+    { name: 'Meteor Yağmuru',    zone: 6, len: 1400, seed: 9901, speed: 18, max: 36, n2: 55, n3: 90, gen: gen({ special: [0, 0.35], fork: [300, 0.08], ramp: [200, 0.1], drone: [300, 0.06], pad: [100, 0.08] }) },
     { name: 'Büyük Gözcü',       zone: 1, len: 0,    seed: 1013, speed: 18, max: 34, n2: 40, n3: 70, bossAt: 450, bossTime: 24, final: true,
-      goal: 'Büyük Gözcü\'yü atlat · ★★ 40 · ★★★ 70 kristal', gen: gen({ ramp: [150, 0.08], slider: [150, 0.14], pendulum: [250, 0.08] }) }
+      goal: 'Büyük Gözcü\'yü atlat · ★★ 40 · ★★★ 70 kristal', gen: gen({ ramp: [150, 0.08], slider: [150, 0.14], pendulum: [250, 0.08], saw: [150, 0.08], laser: [250, 0.06] }) }
   ];
   const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
   const totalStars = () => LEVELS.reduce((n, _, i) => n + (storyStars[i] || 0), 0);
@@ -2957,7 +3075,7 @@ vec3 bendDir(vec3 n, float d) {
     const zone = ZONES[zoneIdx];
     const difficulty = modeKey === 'rush' ? 1 : Math.min(1, dist / 1500);
 
-    if (boss) {                                    // keep the road clear while the Sentinel fires
+    if (boss || droneActive()) {                   // keep the road clear while the Sentinel or a hunter drone works
       if (rng() < 0.6) crystalLine(Math.floor(rng() * 3), z, 4);
       return;
     }
@@ -3004,6 +3122,16 @@ vec3 bendDir(vec3 n, float d) {
       if (rng() < 0.6) crystalLine(free, z, 4);
       return;
     }
+
+    // Each new obstacle owns its own slice of the roll, so one that is not unlocked yet never lends its odds to another
+    const ev3 = rng();
+    let lo = 0;
+    const slice = g => { const from = lo; lo += g[1]; return dist > g[0] && ev3 >= from && ev3 < lo; };
+    if (slice(G.laser)) { spawnLaser(); return; }
+    if (slice(G.saw)) { spawnSaw(); return; }
+    if (slice(G.spikes)) { spawnSpikes(); return; }
+    if (slice(G.drone)) { spawnDrone(); return; }
+    if (slice(G.pad)) { spawnPad(); return; }
 
     if (modeKey === 'zen') {                          // no obstacles: crystals and pickups only
       crystalLine(lanes[0], z, 4 + Math.floor(rng() * 4));
@@ -3126,6 +3254,75 @@ vec3 bendDir(vec3 n, float d) {
     }
   }
 
+  function usePad(e) {
+    e.used = true; e.mesh.visible = false;
+    boostT = 1.7; run.pads++; score += 30 * scoreMul;
+    burst(new THREE.Vector3(LANES[e.lane], 0.3, 0), COLORS.shield, 18, 8);
+    sfx.boost(); flashScreen('#9dffb0');
+  }
+
+  function updateDrone(e, dt) {
+    const m = e.mesh, ts = timeScale;
+    m.position.z -= dz_frame;                                   // the drone ignores the ground scrolling past
+    e.t += dt * ts;
+    for (const r of e.rotors) r.rotation.z += dt * 30;
+    const leaving = e.state === 'leave';
+    m.position.x += (LANES[lane] - m.position.x) * Math.min(1, dt * (e.state === 'tele' ? 0.5 : leaving ? 0 : 2.2));
+    m.position.z += ((leaving ? -150 : -24) - m.position.z) * Math.min(1, dt * (leaving ? 0.8 : 1.6));
+    m.position.y = leaving ? m.position.y + dt * 5 : 3.2 + Math.sin(e.t * 3) * 0.15;
+    if (e.state === 'arrive') {
+      if (m.position.z > -27) { e.state = 'hunt'; e.dropT = 0.8; }
+    } else if (e.state === 'hunt') {
+      e.dropT -= dt * ts;
+      if (e.dropT <= 0) { e.state = 'tele'; e.tele = 0.7; e.beam.visible = true; e.ring.visible = true; e.eye.material = MAT.droneEyeAlert; e.beepT = 0; }
+    } else if (e.state === 'tele') {
+      e.tele -= dt * ts; e.beepT -= dt * ts;
+      if (e.beepT <= 0) { sfx.beep(); e.beepT = 0.18; }
+      e.beam.material.opacity = 0.35 + 0.3 * Math.abs(Math.sin(e.t * 18));
+      if (e.tele <= 0) {
+        addEntity('mine', closestLane(m.position.x), m.position.z + 0.3, 0, { fromY: 2.8 });
+        e.drops++; e.beam.visible = false; e.ring.visible = false; e.eye.material = MAT.droneEye;
+        if (e.drops >= e.total) e.state = 'leave'; else { e.state = 'hunt'; e.dropT = Math.max(0.9, 1.9 - speed / 45); }
+      }
+    } else if (leaving) {
+      if (m.position.y > 16) {
+        removeEntity(e);
+        if (state === 'play') {
+          run.drones++; crystals += 6; score += 120 * scoreMul;
+          toast('Dron atlatıldı', '+6 kristal · +120 puan', 'var(--crystal)');
+          sfx.win();
+        }
+      }
+    }
+  }
+  const droneActive = () => entities.some(x => x.alive && x.kind === 'drone');
+
+  function spawnLaser() {
+    addEntity('laser', 1, SPAWN_Z);
+    crystalLine(Math.floor(rng() * 3), SPAWN_Z - 8, 3);
+  }
+  function spawnSaw() {
+    const l = Math.floor(rng() * 3), zig = dist > 900 && rng() < 0.3;
+    addEntity('saw', zig ? 1 : l, SPAWN_Z, 0, { zig });
+    if (rng() < 0.6) crystalLine((l + 1 + Math.floor(rng() * 2)) % 3, SPAWN_Z, 3);
+  }
+  function spawnSpikes() {
+    const lanes2 = shuffle([0, 1, 2]), n = rng() < 0.25 ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      addEntity('spikes', lanes2[i], SPAWN_Z);
+      for (let k = 0; k < 4; k++) addEntity('crystal', lanes2[i], SPAWN_Z + 1.5 - k * 1.5, 1.6);    // a reward for jumping
+    }
+  }
+  function spawnPad() {
+    const l = Math.floor(rng() * 3);
+    addEntity('pad', l, SPAWN_Z);
+    crystalLine(l, SPAWN_Z - 12, 6);
+  }
+  function spawnDrone() {
+    if (droneActive()) return;
+    addEntity('drone', 1, SPAWN_Z + 25);
+  }
+
   function breakGlass(e) {
     removeEntity(e);
     const c = e.mesh.position.clone();
@@ -3195,6 +3392,7 @@ vec3 bendDir(vec3 n, float d) {
       if (abilityT > 0) abilityT = Math.max(0, abilityT - dt);
       if (invulnT > 0) invulnT -= dt;
       if (stumbleT > 0) stumbleT -= dt;
+      if (boostT > 0) boostT -= dt;
       if (modeKey === 'time' || modeKey === 'zen') {
         modeTime -= dt;
         if (modeTime <= 0) gameOver(modeKey);
@@ -3202,8 +3400,9 @@ vec3 bendDir(vec3 n, float d) {
     } else if (state === 'menu') {
       speed = 9;
     }
-    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1) * (stumbleT > 0 ? 0.6 : 1);
+    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1) * (stumbleT > 0 ? 0.6 : 1) * (boostT > 0 ? 1.45 : 1);
     const dz = moving ? speed * timeScale * dt : 0;
+    dz_frame = dz;
     if (moving) clock += dt * timeScale;
     if (playing) {
       dist += dz;
@@ -3272,7 +3471,7 @@ vec3 bendDir(vec3 n, float d) {
     updateTrail(state === 'paused' ? 0 : dt, dz, ball.visible && moving);
     if (state !== 'play' && state !== 'paused') ghostGroup.visible = false;
 
-    const targetFov = baseFov + (pw.slow > 0 ? 6 : 0) + (flying ? 4 : 0);
+    const targetFov = baseFov + (pw.slow > 0 ? 6 : 0) + (flying ? 4 : 0) + (boostT > 0 ? 7 : 0);
     if (Math.abs(camera.fov - targetFov) > 0.05) {
       camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 4);
       camera.updateProjectionMatrix();
@@ -3295,6 +3494,28 @@ vec3 bendDir(vec3 n, float d) {
         e.pivot.rotation.z = th;
         e.center.set(m.position.x + 5.2 * Math.sin(th), 6 - 5.2 * Math.cos(th), m.position.z);
       }
+      if (e.kind === 'laser') {
+        for (let i = 0; i < 3; i++) {
+          const ph = (clock / e.period + e.phase + i / 3) % 1;
+          e.on[i] = ph < 0.5;
+          e.beams[i].material = e.on[i] ? MAT.laserOn : (ph > 0.88 && Math.floor(clock * 14) % 2) ? MAT.laserWarn : MAT.laserOff;
+        }
+      }
+      if (e.kind === 'saw') {
+        if (playing) m.position.z += e.extra * timeScale * dt;
+        e.spin.rotation.z -= dt * 12;
+        if (e.zig) m.position.x = LANES[e.lane] + 1.8 * Math.sin(e.phase + clock * 2.2);
+        e.center.set(m.position.x, 0.8, m.position.z);
+      }
+      if (e.kind === 'mine' && playing) {
+        if (m.position.y > 0.5) {
+          e.vy -= 26 * dt; m.position.y = Math.max(0.5, m.position.y + e.vy * dt);
+          if (m.position.y <= 0.5) burst(new THREE.Vector3(m.position.x, 0.4, m.position.z), 0xff6a3d, 8, 5);
+        }
+        e.light.scale.setScalar(0.8 + 0.5 * Math.sin(clock * 12 + e.blink));
+        m.rotation.y += dt;
+      }
+      if (e.kind === 'drone' && playing) updateDrone(e, dt);
       if (e.kind === 'tornado') { m.position.x = e.amp * Math.sin(e.phase + clock * e.w); m.rotation.y += dt * 6; }
       if (e.kind === 'jelly') {
         m.position.y = 1.5 + 1.1 * Math.sin(e.phase + clock * 2.4);
@@ -3339,6 +3560,14 @@ vec3 bendDir(vec3 n, float d) {
         }
       } else if (e.r) {
         if (e.center.distanceTo(ballCenter) < e.r + (ducking ? 0.3 : 0.45)) { if (hitObstacle(e)) break; }
+      } else if (e.kind === 'laser') {
+        let dead = false;
+        if (Math.abs(z) < 0.6 && py < 1.5) {
+          for (let i = 0; i < 3; i++) if (e.on[i] && Math.abs(LANES[i] - px) < 0.95) { dead = hitObstacle(e); break; }
+        }
+        if (dead) break;
+      } else if (e.kind === 'pad') {
+        if (!e.used && grounded && Math.abs(LANES[e.lane] - px) < 1.0 && Math.abs(z) < 1.4) usePad(e);
       } else if (e.gap) {
         if (grounded && invulnT <= 0 && !(abilityT > 0 && abilityKind === 'lava') &&
             Math.abs(LANES[e.lane] - px) < 0.8 && Math.abs(z) < e.len / 2 - 0.25) { if (fallInto(e)) break; }
@@ -3547,7 +3776,7 @@ vec3 bendDir(vec3 n, float d) {
     get won() { return state === 'won'; },
     setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
     get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
-    fault(n) { faultN = n; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, len: e.len || 0 })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
+    fault(n) { faultN = n; }, row: () => spawnRow(), clearEnts() { for (const e of entities) scene.remove(e.mesh); entities = []; }, drone: () => spawnDrone(), laser: () => spawnLaser(), saw: () => spawnSaw(), spikes: () => spawnSpikes(), pad: () => spawnPad(), get boost() { return boostT; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, y: e.mesh.position.y, x: e.mesh.position.x, len: e.len || 0, on: e.on ? e.on.slice() : null, state: e.state || null })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
     get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();
