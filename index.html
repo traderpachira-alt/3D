@@ -431,7 +431,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
     </div>
 
     <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
-      <p>Yedi bölge, her bölgenin sonunda bir Gözcü. Yol virajlara girer, U dönüşü yapar, hatta tavana çıkar; kamera topla birlikte döner. Yol bazen ikiye ayrılır. Kristaller topunun yeteneğini doldurur, rekor hayaletin yanında koşar.</p>
+      <p>Yedi bölge, her bölgenin sonunda bir Gözcü. Yol virajlara girer, U dönüşü yapar, hatta tavana çıkar; kamera topla birlikte döner. Yol bazen ikiye ayrılır. Kristaller topunun yeteneğini doldurur. Art arda kristal toplayınca hızlanırsın. En iyi koşunun hayaleti, «Rekoru kovala» ile aynı pistte seninle yarışır.</p>
       <div class="keys desk-only">
         <span><kbd>←</kbd> <kbd>→</kbd></span><span>Şerit değiştir (A / D)</span>
         <span><kbd>↑</kbd> <kbd>Boşluk</kbd></span><span>Zıpla (W)</span>
@@ -460,6 +460,7 @@ body.cvd { --c-block: #d55e00; --c-bar: #56b4e9; --c-wall: #0072b2; --c-slider: 
         <button class="btn alt" id="storyBtn" type="button" style="--alt: var(--amber)">Hikaye modu<small id="storyInfo">10 bölüm</small></button>
         <button class="btn alt" id="mpBtn" type="button" style="--alt: var(--crystal)">Çok oyunculu<small id="mpInfo">Aynı pistte yarış</small></button>
       </div>
+      <button class="btn alt" id="chaseBtn" type="button" style="--alt: #ffffff" hidden>Rekoru kovala<small id="chaseInfo">Aynı pistte hayaletinle yarış</small></button>
       <button class="btn alt" id="dailyBtn" type="button">Günlük meydan okuma<small id="dailyInfo">Herkes için aynı harita</small></button>
       <div class="row">
         <button class="ghost music-toggle" type="button">Müzik: Açık</button>
@@ -1542,7 +1543,7 @@ vec3 bendDir(vec3 n, float d) {
       e.beam = new THREE.Mesh(GEO.droneBeam, MAT.droneBeam); e.beam.position.y = -1.6; e.beam.visible = false; mesh.add(e.beam);
       e.ring = new THREE.Mesh(GEO.marker, MAT.marker); e.ring.rotation.x = -Math.PI / 2; e.ring.position.y = -3.15; e.ring.visible = false; mesh.add(e.ring);
       mesh.position.set(0, 3.2, z);
-      e.t = 0; e.state = 'arrive'; e.drops = 0; e.total = dist > 1500 ? 5 : 4; e.dropT = 1; e.tele = 0; e.beepT = 0;
+      e.t = 0; e.state = 'arrive'; e.drops = 0; e.total = gd() > 1500 ? 5 : 4; e.dropT = 1; e.tele = 0; e.beepT = 0;
     } else if (kind === 'pendulum') {
       // Swings across all three lanes; jump over the bob or time the gap.
       mesh = new THREE.Group();
@@ -1815,6 +1816,27 @@ vec3 bendDir(vec3 n, float d) {
   let story = null, raceMode = false, finishSpawned = false, lastMode = 'normal', lastOpts = {};
   let modeKey = 'normal', mut = null, speedCap = MAX_SPEED, accelRate = ACCEL, scoreMul = 1, modeTime = 0;
   let bankedCrystals = 0, stumbleT = 0, boostT = 0, dz_frame = 0;
+  // Course generation never looks at how well you play: rows sit at fixed distances (rowS), are drawn
+  // from a per-row generator seeded by (courseSeed, rowS) and are paced for the speed the run *should* have.
+  let rowS = 125, spawnZ = SPAWN_Z, droneClearS = 0, courseSeed = null, runStartSpeed = START_SPEED;
+  const vAt = sv => Math.min(speedCap, Math.sqrt(runStartSpeed * runStartSpeed + 2 * accelRate * Math.max(0, sv - 95)));
+  const gd = () => Math.max(0, rowS - 95);                                 // distance of the road being laid out
+  const zoneAtGen = () => story ? story.def.zone : Math.floor(gd() / ZONE_LEN) % ZONES.length;
+  const hash32 = (a, b) => { let h = (a ^ 0x9e3779b9) >>> 0; h = Math.imul(h ^ (b >>> 0), 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); return (h ^ (h >>> 16)) >>> 0; };
+  function bossStretch(sv) {                                               // rows the Sentinel keeps clear (by distance, not by time)
+    if (modeKey === 'zen') return false;
+    if (story) {
+      const d = story.def;
+      return !!d.bossAt && sv >= d.bossAt + 95 && sv < d.bossAt + 95 + vAt(d.bossAt) * ((d.bossTime || BOSS_TIME) + 1.6);
+    }
+    const g = sv - 95, lv0 = Math.floor(g / ZONE_LEN);
+    for (const lv of [lv0, lv0 - 1]) {
+      if (lv < 0) continue;
+      const start = lv * ZONE_LEN + BOSS_AT;
+      if (sv >= start + 95 && sv < start + 95 + vAt(start) * (BOSS_TIME + 1.6)) return true;
+    }
+    return false;
+  }
   let energy = 0, abilityT = 0, abilityMax = 1, abilityKind = null, invulnT = 0;
   const pw = { magnet: 0, double: 0, slow: 0 };
   const pwMax = { magnet: 1, double: 1, slow: 1 };
@@ -2016,14 +2038,14 @@ vec3 bendDir(vec3 n, float d) {
 
   function resetRunState() {
     clearEntities();
-    dist = 0; score = 0; crystals = 0; bankedCrystals = 0; nextSpawnAt = 30;
+    dist = 0; score = 0; crystals = 0; bankedCrystals = 0; rowS = 125; droneClearS = 0;
     lane = 1; px = 0; py = 0; vy = 0; grounded = true; flying = false; duckT = 0; shield = false; shake = 0;
     combo = 0; comboT = 0;
     pw.magnet = pw.double = pw.slow = 0;
     zoneLevel = 0; zoneIdx = 0; bossDoneLevel = -1;
     run = { dist: 0, crystals: 0, combo: 0, jumps: 0, powers: 0, ramps: 0, bosses: 0, zone: 1, daily: false, missionsDone: 0, abilities: 0, risky: 0, glass: 0, drones: 0, pads: 0 };
     energy = 0; abilityT = 0; invulnT = 0; falling = false; timeScale = 1; stumbleT = 0; boostT = 0;
-    runTime = 0; ghostRec = []; ghostNextT = 0; ghostPassed = false; ghostData = null;
+    runTime = 0; ghostRec = []; ghostNextT = 0; ghostPassed = false; ghostData = null; ghostMeta = null; ghostSavedRun = false; chaseRun = false;
     ghostGroup.visible = false; ui.ghostLine.hidden = true;
     runUnlocks = [];
     ui.bossbar.hidden = true;
@@ -2045,10 +2067,17 @@ vec3 bendDir(vec3 n, float d) {
     story = mode === 'story' ? { idx: opts.idx, def: LEVELS[opts.idx] } : null;
     raceMode = mode === 'race';
     mut = mode === 'weekly' ? MUTATORS[weekId() % MUTATORS.length].id : null;
+    // Ghosts run on their own road: the daily course, or the course of your best run when you chase it
+    let ghostSrc = null;
+    if (ghostOn && mode === 'daily') ghostSrc = readGhost(true);
+    else if (ghostOn && mode === 'normal' && opts.chase) ghostSrc = readGhost(false);
+    chaseRun = mode === 'normal' && !!opts.chase && !!ghostSrc;
+    // every run gets a seed, so any run can be laid out again exactly
     const seed = daily ? Number(todayKey()) : story ? story.def.seed : raceMode ? (opts.seed >>> 0)
-      : mode === 'weekly' ? weekId() * 7919 + 17 : null;
-    ghostData = mode === 'normal' || mode === 'daily' ? loadGhost() : null;
-    rng = seed != null ? mulberry32(seed) : Math.random;
+      : mode === 'weekly' ? weekId() * 7919 + 17 : chaseRun ? ghostSrc.seed : Math.floor(Math.random() * 2147483647);
+    courseSeed = seed;
+    ghostData = ghostSrc ? ghostSrc.data : null; ghostMeta = ghostSrc;
+    rng = mulberry32(seed);
     speedCap = MAX_SPEED; accelRate = ACCEL; scoreMul = 1; modeTime = 0;
     let startSpeed = START_SPEED;
     if (story) { startSpeed = story.def.speed; speedCap = story.def.max; }
@@ -2057,7 +2086,7 @@ vec3 bendDir(vec3 n, float d) {
     else if (mode === 'time') modeTime = 60;
     scene.fog.near = mut === 'dark' ? 6 : 35; scene.fog.far = mut === 'dark' ? 55 : 120;
     resetPath(pathModeFor(), seed, mode === 'zen');
-    speed = startSpeed;
+    speed = startSpeed; runStartSpeed = startSpeed;
     finishSpawned = false;
     if (story) { zoneIdx = story.def.zone; blendZone(ZONES[zoneIdx], 1); }
     shield = upgrades.shield > 0 && mode !== 'rush';
@@ -2126,7 +2155,7 @@ vec3 bendDir(vec3 n, float d) {
     const final = Math.floor(score);
     const counts = modeKey === 'normal' || modeKey === 'daily';
     const isBest = counts && final > best;
-    if (counts && ghostOn && (daily ? final > dailyRec.best : (isBest || !store.get('kehribar-ghost', null)))) saveGhost();
+    if (counts && ghostOn) maybeSaveGhost(final);
     if (isBest) { best = final; store.set('kehribar-best', best); }
     recordModeBest(final);
     let dailyNote = '';
@@ -2146,6 +2175,7 @@ vec3 bendDir(vec3 n, float d) {
     ui.bankGain.textContent = `+${crystals} kristal kasaya${dailyNote} · Kasa: ${bank}`;
     const parts = [];
     if (run.missionsDone) parts.push(`${run.missionsDone} görev tamamlandı`);
+    if (ghostSavedRun) parts.push(chaseRun || daily ? 'Yeni hayalet kaydedildi: bu piste artık sen öndesin' : 'Yeni hayalet kaydedildi: Rekoru kovala ile bu pistte yarışabilirsin');
     if (runUnlocks.length) parts.push(`Başarım: ${runUnlocks.join(', ')}`);
     ui.finalUnlocks.textContent = parts.join(' · ');
     ui.finalUnlocks.hidden = !parts.length;
@@ -2154,6 +2184,7 @@ vec3 bendDir(vec3 n, float d) {
     ui.pauseBtn.hidden = true; ui.combo.hidden = true; ui.powers.hidden = true; ui.bossbar.hidden = true; ui.abilityBtn.hidden = true;
     ui.storybar.hidden = true;
     if (story) ui.overEyebrow.textContent = `Bölüm ${story.idx + 1} · ${story.def.name}`;
+    if (chaseRun) ui.overEyebrow.textContent = 'Rekor kovalama · aynı pist';
     if (MODES[modeKey]) ui.overEyebrow.textContent = MODES[modeKey].name + (mut ? ' · ' + MUTATORS.find(x => x.id === mut).name : '');
     if (raceMode) {
       ui.overEyebrow.textContent = 'Yarış · sonuçlar yarış odasında';
@@ -2249,9 +2280,10 @@ vec3 bendDir(vec3 n, float d) {
   }
 
   // ---------- Ghost of the best run ----------
-  const GHOST_DT = 0.1, GHOST_MAX = 6000;
+  const GHOST_DT = 0.1, GHOST_MAX = 3000;
   let ghostOn = store.get('kehribar-ghost-on', true);
   let ghostRec = [], ghostNextT = 0, runTime = 0, ghostData = null, ghostPassed = false;
+  let ghostMeta = null, ghostSavedRun = false, chaseRun = false, memGhost = null, memGhostDaily = null;
   const ghostGroup = new THREE.Group();
   const ghostBall = new THREE.Mesh(GEO.ghost, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false }));
   const ghostWire = new THREE.Mesh(new THREE.IcosahedronGeometry(0.53, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.35 }));
@@ -2265,35 +2297,43 @@ vec3 bendDir(vec3 n, float d) {
   ghostGroup.visible = false;
   scene.add(ghostGroup);
 
-  function loadGhost() {
-    if (!ghostOn) return null;
-    if (daily) { const g = store.get('kehribar-ghost-daily', null); return g && g.date === todayKey() ? g.data : null; }
-    const g = store.get('kehribar-ghost', null);
-    return g && Array.isArray(g.data) && g.data.length > 6 ? g.data : null;
+  // A ghost is only meaningful on the road it ran: it carries the course seed, its own score and its path.
+  function readGhost(isDaily) {
+    const g = isDaily ? (memGhostDaily || store.get('kehribar-ghost-daily', null)) : (memGhost || store.get('kehribar-ghost2', null));
+    if (!g || g.v !== 2 || !Array.isArray(g.data) || g.data.length < 8 || g.seed == null) return null;
+    if (isDaily && g.date !== todayKey()) return null;
+    return g;
   }
-  function saveGhost() {
-    const data = ghostRec.slice(0, GHOST_MAX * 3);
-    if (daily) store.set('kehribar-ghost-daily', { date: todayKey(), data });
-    else store.set('kehribar-ghost', { data });
+  function pushGhost(g) { if (cloud.ready && cloud.ghostRef) cloud.ghostRef.set(g).catch(() => {}); }
+  // The best run stays the ghost: it is replaced only by a run with a higher score than the ghost's own
+  function maybeSaveGhost(final) {
+    if (ghostRec.length < 12) return;
+    const cur = readGhost(daily);
+    if (cur && final <= cur.score) return;
+    const g = { v: 2, score: final, dist: Math.floor(dist), seed: courseSeed, date: todayKey(), data: ghostRec.slice(0, GHOST_MAX * 4) };
+    ghostSavedRun = true;
+    if (daily) { memGhostDaily = g; store.set('kehribar-ghost-daily', g); }
+    else { memGhost = g; store.set('kehribar-ghost2', g); pushGhost(g); }
   }
   function setGhost(on) {
     ghostOn = on; store.set('kehribar-ghost-on', on);
     document.querySelectorAll('.ghost-toggle').forEach(b => b.textContent = `Hayalet: ${on ? 'Açık' : 'Kapalı'}`);
+    try { renderPlayInfo(); } catch {}
   }
   function updateGhost(dt) {
     runTime += dt;
-    while (ghostNextT <= runTime && ghostRec.length < GHOST_MAX * 3) {
-      ghostRec.push(Math.round(dist * 10) / 10, Math.round(px * 100) / 100, Math.round(py * 100) / 100);
+    while (ghostNextT <= runTime && ghostRec.length < GHOST_MAX * 4) {
+      ghostRec.push(Math.round(dist * 10) / 10, Math.round(px * 100) / 100, Math.round(py * 100) / 100, Math.floor(score));
       ghostNextT += GHOST_DT;
     }
     if (!ghostData) { ghostGroup.visible = false; ui.ghostLine.hidden = true; return; }
-    const frames = ghostData.length / 3;
+    const frames = ghostData.length / 4;
     const f = runTime / GHOST_DT, i = Math.floor(f);
     ui.ghostLine.hidden = false;
     if (i >= frames - 1) {
       ghostGroup.visible = false;
-      const end = ghostData[(frames - 1) * 3];
-      if (dist > end && !ghostPassed) {
+      const end = ghostData[(frames - 1) * 4];
+      if ((dist > end || (ghostMeta && score > ghostMeta.score)) && !ghostPassed) {
         ghostPassed = true;
         toast('Rekor hayaleti', 'Rekor koşunu geçtin', '#ffffff');
         unlock('ghost');
@@ -2301,15 +2341,14 @@ vec3 bendDir(vec3 n, float d) {
       ui.ghostLine.textContent = dist > end ? 'Rekoru geçtin' : `Rekor ${Math.floor(end)} m'de bitti`;
       return;
     }
-    const t = f - i, a = i * 3, b = a + 3;
-    const gd = ghostData[a] + (ghostData[b] - ghostData[a]) * t;
-    const gx = ghostData[a + 1] + (ghostData[b + 1] - ghostData[a + 1]) * t;
-    const gy = ghostData[a + 2] + (ghostData[b + 2] - ghostData[a + 2]) * t;
-    const rel = gd - dist;
+    const t = f - i, a = i * 4, b = a + 4, G = ghostData;
+    const gdist = G[a] + (G[b] - G[a]) * t, gx = G[a + 1] + (G[b + 1] - G[a + 1]) * t, gy = G[a + 2] + (G[b + 2] - G[a + 2]) * t;
+    const gsc = G[a + 3] + (G[b + 3] - G[a + 3]) * t;
+    const rel = gdist - dist, dsc = Math.round(score - gsc);
     ghostGroup.position.set(gx, gy + BALL_R, -rel);
     ghostGroup.visible = rel < 90 && rel > -8;
     ghostWire.rotation.x -= dt * 4;
-    ui.ghostLine.textContent = rel >= 0 ? `Rekor: ${Math.round(rel)} m önde` : `Rekor: ${Math.round(-rel)} m geride`;
+    ui.ghostLine.textContent = `${dsc >= 0 ? `Puan: +${dsc}` : `Puan: ${dsc}`} · hayalet ${rel >= 0 ? `${Math.round(rel)} m önde` : `${Math.round(-rel)} m geride`}`;
   }
 
   // ---------- Lifetime statistics ----------
@@ -2457,6 +2496,9 @@ vec3 bendDir(vec3 n, float d) {
   }
   function renderPlayInfo() {
     ui.storyInfo.textContent = `10 bölüm · ${totalStars()} / 30 yıldız`;
+    const g = ghostOn ? readGhost(false) : null;
+    $('chaseBtn').hidden = !g;
+    if (g) $('chaseInfo').textContent = `${g.score} puan · ${g.dist} m · aynı pist, puan farkıyla yarış`;
   }
   function openStory() {
     ui.menu.hidden = true; ui.storyMenu.hidden = false;
@@ -2738,6 +2780,7 @@ vec3 bendDir(vec3 n, float d) {
       const me = await user.me();
       cloud.name = me.name || '';
       cloud.ref = db.doc(`data/users/${uid}/progress`);
+      cloud.ghostRef = db.doc(`data/users/${uid}/ghost`);
       const snap = await withTimeout(cloud.ref.get(), 10000);
       cloud.ready = true;
       const p = snap.exists ? JSON.parse(JSON.stringify(snap.data())) : null;   // snapshots are frozen: copy before the game edits them
@@ -2751,6 +2794,14 @@ vec3 bendDir(vec3 n, float d) {
         if (!localUpdated) localUpdated = Date.now();
         pushCloud();
       } else setCloudLine('saved');
+      try {                                                   // the best ghost lives in its own document (it can be large)
+        const gs = await withTimeout(cloud.ghostRef.get(), 10000);
+        const mine = readGhost(false);
+        const g = gs.exists ? JSON.parse(JSON.stringify(gs.data())) : null;   // snapshots are frozen: copy
+        if (g && g.v === 2 && Array.isArray(g.data) && g.seed != null && (!mine || g.score > mine.score)) {
+          memGhost = g; store.set('kehribar-ghost2', g); renderMenu();
+        } else if (mine && (!g || !(g.score >= mine.score))) pushGhost(mine);
+      } catch {}
     } catch { setCloudLine('local'); }
   }
 
@@ -3044,6 +3095,7 @@ vec3 bendDir(vec3 n, float d) {
 
   $('startBtn').addEventListener('click', () => startRun('normal'));
   $('dailyBtn').addEventListener('click', () => startRun('daily'));
+  $('chaseBtn').addEventListener('click', () => startRun('normal', { chase: true }));
   ui.restartBtn.addEventListener('click', () => { if (lastMode === 'race') { toMenu(); openMp(); } else startRun(lastMode, lastOpts); });
   $('storyBtn').addEventListener('click', openStory);
   $('mpBtn').addEventListener('click', openMp);
@@ -3073,11 +3125,11 @@ vec3 bendDir(vec3 n, float d) {
   function crystalLine(l, z, n) { const m = mut === 'rain' ? Math.round(n * 1.8) : n; for (let i = 0; i < m; i++) addEntity('crystal', l, z + 5 - i * 2.2); }
 
   function spawnRow() {
-    const z = SPAWN_Z;
-    const zone = ZONES[zoneIdx];
-    const difficulty = modeKey === 'rush' ? 1 : Math.min(1, dist / 1500);
+    const z = spawnZ;
+    const zone = ZONES[zoneAtGen()];
+    const difficulty = modeKey === 'rush' ? 1 : Math.min(1, gd() / 1500);
 
-    if (boss || droneActive()) {                   // keep the road clear while the Sentinel or a hunter drone works
+    if (bossStretch(rowS) || rowS < droneClearS) {                   // keep the road clear while the Sentinel or a hunter drone works
       if (rng() < 0.6) crystalLine(Math.floor(rng() * 3), z, 4);
       return;
     }
@@ -3086,30 +3138,30 @@ vec3 bendDir(vec3 n, float d) {
     const G = story ? story.def.gen : modeKey === 'zen' ? ZEN_GEN : DEFAULT_GEN;
     const ev = rng();
     let acc = G.fork[1];
-    if (dist > G.fork[0] && ev < acc) { spawnFork(); return 'long'; }
+    if (gd() > G.fork[0] && ev < acc) { spawnFork(); return 'long'; }
     acc += G.bridge[1];
-    if (dist > G.bridge[0] && ev < acc) { spawnBridge(); return 'long'; }
+    if (gd() > G.bridge[0] && ev < acc) { spawnBridge(); return 'long'; }
     acc += G.special[1];
-    if (zone.special && dist > G.special[0] && ev < acc) { spawnSpecial(zone.special); return; }
+    if (zone.special && gd() > G.special[0] && ev < acc) { spawnSpecial(zone.special); return; }
 
     const special = rng();
     let acc2 = G.ramp[1];
-    if (dist > G.ramp[0] && special < acc2) {     // ramp + sky crystal arc
+    if (gd() > G.ramp[0] && special < acc2) {     // ramp + sky crystal arc
       const l = Math.floor(rng() * 3);
       addEntity('ramp', l, z);
-      const v = speed * timeScale;
-      const gG = GLIDE_GRAVITY * gravMul();
+      const v = vAt(rowS);
+      const gG = GLIDE_GRAVITY * (zone.lowGravity ? 0.6 : 1) * (mut === 'lowg' ? 0.5 : 1);
       const air = 2 * RAMP_V / gG;
       for (let t = 0.3; t < air; t += 0.22) {
         const y = RAMP_V * t - 0.5 * gG * t * t;
         if (y < 0.4) break;
         addEntity('crystal', l, z - RAMP_LEN / 2 - v * t, y);
       }
-      nextSpawnAt = dist + v * (air + 0.4);
+      rowS += v * (air + 0.4);
       return 'ramp';
     }
     acc2 += G.pendulum[1];
-    if (dist > G.pendulum[0] && special < acc2) { // pendulum gate across the whole road
+    if (gd() > G.pendulum[0] && special < acc2) { // pendulum gate across the whole road
       addEntity('pendulum', 1, z);
       crystalLine(Math.floor(rng() * 3), z - 8, 3);
       return;
@@ -3117,7 +3169,7 @@ vec3 bendDir(vec3 n, float d) {
 
     const lanes = shuffle([0, 1, 2]);
     acc2 += G.slider[1];
-    if (dist > G.slider[0] && special < acc2) {   // slider sweeping two adjacent lanes
+    if (gd() > G.slider[0] && special < acc2) {   // slider sweeping two adjacent lanes
       const l = rng() < 0.5 ? 0 : 1;
       addEntity('slider', l, z);
       const free = l === 0 ? 2 : 0;
@@ -3128,7 +3180,7 @@ vec3 bendDir(vec3 n, float d) {
     // Each new obstacle owns its own slice of the roll, so one that is not unlocked yet never lends its odds to another
     const ev3 = rng();
     let lo = 0;
-    const slice = g => { const from = lo; lo += g[1]; return dist > g[0] && ev3 >= from && ev3 < lo; };
+    const slice = g => { const from = lo; lo += g[1]; return gd() > g[0] && ev3 >= from && ev3 < lo; };
     if (slice(G.laser)) { spawnLaser(); return; }
     if (slice(G.saw)) { spawnSaw(); return; }
     if (slice(G.spikes)) { spawnSpikes(); return; }
@@ -3138,9 +3190,7 @@ vec3 bendDir(vec3 n, float d) {
     if (modeKey === 'zen') {                          // no obstacles: crystals and pickups only
       crystalLine(lanes[0], z, 4 + Math.floor(rng() * 4));
       if (rng() < 0.12) {
-        const options = ['magnet', 'double', 'slow'].filter(k => pw[k] <= 0);
-        if (!shield) options.push('shield');
-        if (options.length) addEntity(pick(options), lanes[1], z - 6);
+        addEntity(pick(['magnet', 'double', 'slow', 'shield']), lanes[1], z - 6);
       }
       return;
     }
@@ -3151,24 +3201,22 @@ vec3 bendDir(vec3 n, float d) {
     for (const l of blocked) {
       const r = rng();
       let kind = r < zone.mix[0] ? 'block' : r < zone.mix[0] + zone.mix[1] ? 'bar' : 'wall';
-      if (kind === 'wall' && dist > 250 && rng() < 0.4) kind = 'glass';       // some walls are breakable glass
+      if (kind === 'wall' && gd() > 250 && rng() < 0.4) kind = 'glass';       // some walls are breakable glass
       addEntity(kind, l, z);
       if (kind === 'block' && rng() < 0.5) addEntity('crystal', l, z, 1.6);
     }
 
     const roll = rng();
-    if (roll < 0.11 && dist > 120) {
-      const options = ['magnet', 'double', 'slow'].filter(k => pw[k] <= 0);
-      if (!shield) options.push('shield');
+    if (roll < 0.11 && gd() > 120) {
       const l = pick(free);
-      if (options.length) { addEntity(pick(options), l, z - 6); return; }
+      addEntity(pick(['magnet', 'double', 'slow', 'shield']), l, z - 6); return;
     }
     if (roll < 0.72) crystalLine(pick(free), z, 3 + Math.floor(rng() * 3));
   }
 
   // Road splits around a long middle wall: one side dense with obstacles and crystals, the other calm.
   function spawnFork() {
-    const z0 = SPAWN_Z, L = Math.max(130, Math.min(260, Math.round(speed * 7)));
+    const z0 = spawnZ, L = Math.max(130, Math.min(260, Math.round(vAt(rowS) * 7)));
     const risky = rng() < 0.5 ? 0 : 2, safe = 2 - risky;
     addEntity('divider', 1, z0, 0, { len: L });
     addEntity('sign', 1, z0 + 0.5, 0, { riskySide: risky });
@@ -3176,7 +3224,7 @@ vec3 bendDir(vec3 n, float d) {
     addEntity('strip', safe, z0, 0, { len: L, color: COLORS.shield });
     // You cannot change lane here, so obstacles must be beatable one at a time: a jump keeps you in the
     // air for ~0.75 s, so leave room to land, look and react (about 1.8 s after a jump, 1.2 s after a duck)
-    const v = Math.max(speed, 16) * 1.15;
+    const v = Math.max(vAt(rowS), 16) * 1.15;
     let prev = null;
     for (let d = 24; d < L - 16;) {
       const zz = z0 - d, r = rng();
@@ -3194,27 +3242,27 @@ vec3 bendDir(vec3 n, float d) {
       if (lane === risky) { run.risky++; toast('Riskli yol', 'Kristaller senin, dikkatli ol', 'var(--coral)'); }
       else toast('Güvenli yol', 'Sakin bir geçiş', 'var(--shield)');
     } });
-    nextSpawnAt = dist + L + 14;
+    rowS += L + 14;
   }
 
   // Chasm with a railed bridge in one lane; consecutive bridges switch lanes.
   function spawnBridge() {
-    let z = SPAWN_Z;
+    let z = spawnZ;
     let l = Math.floor(rng() * 3);
-    const sections = 1 + (rng() < 0.6 ? 1 : 0) + (dist > 1500 && rng() < 0.5 ? 1 : 0);
+    const sections = 1 + (rng() < 0.6 ? 1 : 0) + (gd() > 1500 && rng() < 0.5 ? 1 : 0);
     for (let s = 0; s < sections; s++) {
       const len = rand(18, 28);
       for (let k = 0; k < 3; k++) if (k !== l) addEntity('gap', k, z, 0, { len });
       addEntity('rails', l, z, 0, { len });
       crystalLine(l, z - 7, Math.max(2, Math.floor((len - 4) / 2.2)));
-      z -= len + rand(9, 12) * Math.max(1, speed / 22);
+      z -= len + rand(9, 12) * Math.max(1, vAt(rowS) / 22);
       l = (l + 1 + Math.floor(rng() * 2)) % 3;
     }
-    nextSpawnAt = dist + (SPAWN_Z - z) + 6;
+    rowS += (spawnZ - z) + 6;
   }
 
   function spawnSpecial(kind) {
-    const z = SPAWN_Z;
+    const z = spawnZ;
     const lanes = shuffle([0, 1, 2]);
     if (kind === 'tornado') {
       addEntity('tornado', 1, z);
@@ -3300,29 +3348,30 @@ vec3 bendDir(vec3 n, float d) {
   const droneActive = () => entities.some(x => x.alive && x.kind === 'drone');
 
   function spawnLaser() {
-    addEntity('laser', 1, SPAWN_Z);
-    crystalLine(Math.floor(rng() * 3), SPAWN_Z - 8, 3);
+    addEntity('laser', 1, spawnZ);
+    crystalLine(Math.floor(rng() * 3), spawnZ - 8, 3);
   }
   function spawnSaw() {
-    const l = Math.floor(rng() * 3), zig = dist > 900 && rng() < 0.3;
-    addEntity('saw', zig ? 1 : l, SPAWN_Z, 0, { zig });
-    if (rng() < 0.6) crystalLine((l + 1 + Math.floor(rng() * 2)) % 3, SPAWN_Z, 3);
+    const l = Math.floor(rng() * 3), zig = gd() > 900 && rng() < 0.3;
+    addEntity('saw', zig ? 1 : l, spawnZ, 0, { zig });
+    if (rng() < 0.6) crystalLine((l + 1 + Math.floor(rng() * 2)) % 3, spawnZ, 3);
   }
   function spawnSpikes() {
     const lanes2 = shuffle([0, 1, 2]), n = rng() < 0.25 ? 2 : 1;
     for (let i = 0; i < n; i++) {
-      addEntity('spikes', lanes2[i], SPAWN_Z);
-      for (let k = 0; k < 4; k++) addEntity('crystal', lanes2[i], SPAWN_Z + 1.5 - k * 1.5, 1.6);    // a reward for jumping
+      addEntity('spikes', lanes2[i], spawnZ);
+      for (let k = 0; k < 4; k++) addEntity('crystal', lanes2[i], spawnZ + 1.5 - k * 1.5, 1.6);    // a reward for jumping
     }
   }
   function spawnPad() {
     const l = Math.floor(rng() * 3);
-    addEntity('pad', l, SPAWN_Z);
-    crystalLine(l, SPAWN_Z - 12, 6);
+    addEntity('pad', l, spawnZ);
+    crystalLine(l, spawnZ - 12, 6);
   }
   function spawnDrone() {
-    if (droneActive()) return;
-    addEntity('drone', 1, SPAWN_Z + 25);
+    if (rowS < droneClearS) return;
+    droneClearS = rowS + vAt(rowS) * 15;                 // rows stay clear for as long as the drone works
+    addEntity('drone', 1, spawnZ + 25);
   }
 
   function breakGlass(e) {
@@ -3402,7 +3451,7 @@ vec3 bendDir(vec3 n, float d) {
     } else if (state === 'menu') {
       speed = 9;
     }
-    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1) * (stumbleT > 0 ? 0.6 : 1) * (boostT > 0 ? 1.45 : 1);
+    timeScale = (pw.slow > 0 ? SLOW_FACTOR : 1) * (abilityT > 0 && abilityKind === 'ice' ? 0.2 : 1) * (stumbleT > 0 ? 0.6 : 1) * (boostT > 0 ? 1.45 : 1) * (1 + 0.03 * (comboMult() - 1));   // x5 combo = +12% speed
     const dz = moving ? speed * timeScale * dt : 0;
     dz_frame = dz;
     if (moving) clock += dt * timeScale;
@@ -3479,9 +3528,11 @@ vec3 bendDir(vec3 n, float d) {
       camera.updateProjectionMatrix();
     }
 
-    if (playing && dist >= nextSpawnAt && !(story && story.def.len && dist > story.def.len + SPAWN_Z - 10)) {
+    if (playing && dist + 95 >= rowS && !(story && story.def.len && dist > story.def.len + SPAWN_Z - 10)) {
+      spawnZ = -(rowS - dist);
+      if (courseSeed != null) rng = mulberry32(hash32(courseSeed, Math.round(rowS * 4)));
       const kind = spawnRow();
-      if (kind !== 'ramp' && kind !== 'long') nextSpawnAt = dist + rand(0.9, 1.3) * (11 + speed * 0.5);
+      if (kind !== 'ramp' && kind !== 'long') rowS += rand(0.9, 1.3) * (11 + vAt(rowS) * 0.5);
     }
 
     // Entities
@@ -3768,7 +3819,16 @@ vec3 bendDir(vec3 n, float d) {
     get state() { return state; }, get dist() { return dist; }, get score() { return score; },
     get crystals() { return crystals; }, get zone() { return ZONES[zoneIdx].name; }, get combo() { return combo; },
     get run() { return run; }, get boss() { return !!boss; }, get py() { return py; }, get missions() { return missions; },
-    startRun, jumpTo(d) { dist = d; nextSpawnAt = d; },
+    startRun, jumpTo(d) { dist = d; rowS = d + 95; },
+    gen(sv) {                                                    // lay out one row exactly as the game does and describe it
+      entities.forEach(e => scene.remove(e.mesh)); entities = [];
+      if (sv <= (window.__lastGen ?? -1)) droneClearS = 0;      // rows are laid out in increasing order, as in play
+      window.__lastGen = sv;
+      rowS = sv; spawnZ = -95;
+      if (courseSeed != null) rng = mulberry32(hash32(courseSeed, Math.round(rowS * 4)));
+      const kind = spawnRow();
+      return { kind, adv: +(rowS - sv).toFixed(2), ents: entities.map(e => [e.kind, e.lane, +(e.mesh.position.z + 95).toFixed(2)]) };
+    }, get seed() { return courseSeed; }, get ghostMeta() { return ghostMeta; },
     give(k) { if (k === 'shield') shield = true; else { pwMax[k] = powerDuration(k); pw[k] = pwMax[k]; } },
     spawn(kind, l = 1, z = -40, opts = {}) { return addEntity(kind, l, z, 0, opts); }, setLane(l) { lane = l; },
     addBank(n) { addBank(n); renderMenu(); },
@@ -3780,7 +3840,7 @@ vec3 bendDir(vec3 n, float d) {
     get won() { return state === 'won'; },
     setSeg(dyaw, droll, len) { resetPath('full', 1); path.seg = { s0: 0, len, dyaw, droll, yaw0: 0, roll0: 0, feature: true }; },
     get time() { return modeTime; }, setTime(t) { modeTime = t; }, get mode() { return modeKey; }, get mut() { return mut; }, get speed() { return speed; },
-    fault(n) { faultN = n; }, get dbg() { return { scene, renderer, trail, trailMat, trailPos, trailCol, tp }; }, row: () => spawnRow(), clearEnts() { for (const e of entities) scene.remove(e.mesh); entities = []; }, drone: () => spawnDrone(), laser: () => spawnLaser(), saw: () => spawnSaw(), spikes: () => spawnSpikes(), pad: () => spawnPad(), get boost() { return boostT; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, y: e.mesh.position.y, x: e.mesh.position.x, len: e.len || 0, on: e.on ? e.on.slice() : null, state: e.state || null })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
+    fault(n) { faultN = n; }, get dbg() { return { scene, renderer, trail, trailMat, trailPos, trailCol, tp }; }, row: () => { rowS = dist + 95; spawnZ = -95; return spawnRow(); }, clearEnts() { for (const e of entities) scene.remove(e.mesh); entities = []; }, drone: () => spawnDrone(), laser: () => spawnLaser(), saw: () => spawnSaw(), spikes: () => spawnSpikes(), pad: () => spawnPad(), get boost() { return boostT; }, setSpeed(v) { speed = v; }, get ents() { return entities.map(e => ({ kind: e.kind, lane: e.lane, z: e.mesh.position.z, y: e.mesh.position.y, x: e.mesh.position.x, len: e.len || 0, on: e.on ? e.on.slice() : null, state: e.state || null })); }, get bank() { return bank; }, get banked() { return bankedCrystals; }, addCrystals(n) { crystals += n; }, get errors() { return errCount; }, get curves() { return settings.curves; },
     get pathMode() { return path.mode; }, get camUp() { return [camera.up.x, camera.up.y, camera.up.z]; }
   };
 })();

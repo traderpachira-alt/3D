@@ -64,6 +64,13 @@ Her kristal enerji çubuğunu %4 doldurur (Gözcü'yü atlatmak %40). Dolunca `E
 | Nebula | Işınlan: 40 m ileri |
 | Altın | Midas: öndeki engeller kristale döner, 6 sn x3 kristal |
 
+## Hayalet (Rekoru kovala)
+- Hayalet **en yüksek puanlı** koşunun kaydıdır; yalnızca kendi puanını geçen bir koşu onu değiştirir (eskiden "rekor kırılırsa" diye genel rekora bakılıyordu ve hayalet kayıp yeniden yazılabiliyordu).
+- Her koşunun bir **tohumu** vardır ve pist yalnızca tohuma ve mesafeye bağlıdır: engeller, çatallar, viraj ve ters dönüşler, güçlendirmeler, Gözcü bölgeleri oyuncunun durumundan (güçlendirme, süre, hız) etkilenmez. Aynı tohum her seferinde aynı pisti verir.
+- Hayalet o pistin kaydını taşır. Normal rastgele koşularda hayalet yoktur (başka pistte anlamsız olurdu). Menüdeki **Rekoru kovala** düğmesi rekor koşunun piste ve tohumuna döner; günlük meydan okuma da zaten her gün aynı pistte hayaletli koşulur.
+- Yarışın ölçüsü artık puan farkıdır (kristal ve kombo): ekranda "Puan: +120 · hayalet 12 m önde" yazar. Art arda kristal toplamak hızı artırır (x2 = +3%, x5 = +12%), bu yüzden iyi oynayan hayaletin önüne geçer.
+- En iyi hayalet Claude hesabına da yazılır (kendi belgesinde), başka cihazda da yarışabilirsin.
+
 ## Hayalet ve istatistikler
 En iyi koşun kaydedilir ve sonraki koşularda yarı saydam "REKOR" hayaleti olarak yanında koşar; sağ üstte kaç metre önde/geride olduğu yazar. Günlük meydan okumada o günün en iyi koşusu hayalettir. Menüden kapatılabilir.
 İstatistik sekmesi: toplam koşu, mesafe, kristal, zıplama, Gözcü, yetenek, oyun süresi, en sevdiğin top ve en çok neye çarptığın.
